@@ -160,8 +160,8 @@ public final class AuthClient: Sendable {
     // MARK: - Token Information
 
     /// Get current user information.
-    public func me() async throws -> User {
-        return try await http.get("/auth/me", responseType: User.self)
+    public func me() async throws -> MeResponse {
+        return try await http.get("/auth/me", responseType: MeResponse.self)
     }
 
     /// Verify token is valid.

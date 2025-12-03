@@ -82,6 +82,17 @@ public struct User: Codable, Sendable, Identifiable {
     }
 }
 
+/// Response from /auth/me endpoint.
+public struct MeResponse: Codable, Sendable {
+    public let user: User
+    public let authMethod: String
+
+    enum CodingKeys: String, CodingKey {
+        case user
+        case authMethod = "authMethod"
+    }
+}
+
 /// Request to create a user.
 public struct CreateUserRequest: Codable, Sendable {
     public let username: String
