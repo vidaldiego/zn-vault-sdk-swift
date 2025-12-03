@@ -1,6 +1,11 @@
 # ZN-Vault Swift SDK
 
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
+[![Platform](https://img.shields.io/badge/platform-macOS%20|%20iOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://developer.apple.com)
+
 A type-safe, idiomatic Swift client library for ZN-Vault secrets management.
+
+**GitHub:** https://github.com/vidaldiego/zn-vault-sdk-swift
 
 ## Features
 
@@ -24,7 +29,7 @@ Add the following to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zincware/zn-vault-sdk-swift.git", from: "1.0.0")
+    .package(url: "https://github.com/vidaldiego/zn-vault-sdk-swift.git", from: "1.0.0")
 ]
 ```
 
