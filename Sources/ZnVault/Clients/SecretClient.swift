@@ -52,13 +52,14 @@ public final class SecretClient: Sendable {
 
     /// Get secret metadata by ID.
     public func get(id: String) async throws -> Secret {
-        return try await http.get("/v1/secrets/\(id)", responseType: Secret.self)
+        return try await http.get("/v1/secrets/\(id)/meta", responseType: Secret.self)
     }
 
-    /// Get secret by alias.
+    /// Get secret by alias (tenant and alias as path parameters).
     public func getByAlias(tenant: String, alias: String) async throws -> Secret {
-        let query = ["tenant": tenant, "alias": alias]
-        return try await http.get("/v1/secrets/by-alias", query: query, responseType: Secret.self)
+        // URL-encode the alias in case it contains special characters
+        let encodedAlias = alias.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? alias
+        return try await http.get("/v1/secrets/\(tenant)/\(encodedAlias)", responseType: Secret.self)
     }
 
     /// Decrypt and get secret value.

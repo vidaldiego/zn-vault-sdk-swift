@@ -27,23 +27,23 @@ public final class UserClient: Sendable {
             tenantId: tenantId,
             role: role
         )
-        return try await http.post("/v1/admin/users", body: request, responseType: User.self)
+        return try await http.post("/v1/users", body: request, responseType: User.self)
     }
 
     /// Create user with request object.
     public func create(request: CreateUserRequest) async throws -> User {
-        return try await http.post("/v1/admin/users", body: request, responseType: User.self)
+        return try await http.post("/v1/users", body: request, responseType: User.self)
     }
 
     /// Get user by ID.
     public func get(id: String) async throws -> User {
-        return try await http.get("/v1/admin/users/\(id)", responseType: User.self)
+        return try await http.get("/v1/users/\(id)", responseType: User.self)
     }
 
     /// Get user by username.
     public func getByUsername(username: String) async throws -> User {
         let query = ["username": username]
-        return try await http.get("/v1/admin/users/by-username", query: query, responseType: User.self)
+        return try await http.get("/v1/users/by-username", query: query, responseType: User.self)
     }
 
     /// List users.
@@ -62,39 +62,39 @@ public final class UserClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/admin/users", query: query, responseType: Page<User>.self)
+        return try await http.get("/v1/users", query: query, responseType: Page<User>.self)
     }
 
     /// Update user.
     public func update(id: String, request: UpdateUserRequest) async throws -> User {
-        return try await http.patch("/v1/admin/users/\(id)", body: request, responseType: User.self)
+        return try await http.put("/v1/users/\(id)", body: request, responseType: User.self)
     }
 
     /// Delete user.
     public func delete(id: String) async throws {
-        try await http.delete("/v1/admin/users/\(id)")
+        try await http.delete("/v1/users/\(id)")
     }
 
     // MARK: - Status Management
 
     /// Activate user.
     public func activate(id: String) async throws -> User {
-        return try await http.post("/v1/admin/users/\(id)/activate", responseType: User.self)
+        return try await http.post("/v1/users/\(id)/activate", responseType: User.self)
     }
 
     /// Deactivate user.
     public func deactivate(id: String) async throws -> User {
-        return try await http.post("/v1/admin/users/\(id)/deactivate", responseType: User.self)
+        return try await http.post("/v1/users/\(id)/deactivate", responseType: User.self)
     }
 
     /// Suspend user.
     public func suspend(id: String) async throws -> User {
-        return try await http.post("/v1/admin/users/\(id)/suspend", responseType: User.self)
+        return try await http.post("/v1/users/\(id)/suspend", responseType: User.self)
     }
 
     /// Unlock user account.
     public func unlock(id: String) async throws -> User {
-        return try await http.post("/v1/admin/users/\(id)/unlock", responseType: User.self)
+        return try await http.post("/v1/users/\(id)/unlock", responseType: User.self)
     }
 
     // MARK: - Password Management
@@ -102,12 +102,12 @@ public final class UserClient: Sendable {
     /// Reset user password (admin).
     public func resetPassword(id: String, newPassword: String) async throws {
         let request = AdminResetPasswordRequest(newPassword: newPassword)
-        try await http.post("/v1/admin/users/\(id)/reset-password", body: request)
+        try await http.post("/v1/users/\(id)/reset-password", body: request)
     }
 
     /// Force password change on next login.
     public func forcePasswordChange(id: String) async throws -> User {
-        return try await http.post("/v1/admin/users/\(id)/force-password-change", responseType: User.self)
+        return try await http.post("/v1/users/\(id)/force-password-change", responseType: User.self)
     }
 
     // MARK: - Role Management
@@ -115,24 +115,24 @@ public final class UserClient: Sendable {
     /// Assign role to user.
     public func assignRole(userId: String, roleId: String) async throws {
         let request = AssignRoleRequest(userId: userId, roleId: roleId)
-        try await http.post("/v1/admin/users/\(userId)/roles", body: request)
+        try await http.post("/v1/users/\(userId)/roles", body: request)
     }
 
     /// Remove role from user.
     public func removeRole(userId: String, roleId: String) async throws {
-        try await http.delete("/v1/admin/users/\(userId)/roles/\(roleId)")
+        try await http.delete("/v1/users/\(userId)/roles/\(roleId)")
     }
 
     /// Get user roles.
     public func getRoles(userId: String) async throws -> [Role] {
-        return try await http.get("/v1/admin/users/\(userId)/roles", responseType: [Role].self)
+        return try await http.get("/v1/users/\(userId)/roles", responseType: [Role].self)
     }
 
     // MARK: - 2FA Management (Admin)
 
     /// Reset user 2FA.
     public func reset2FA(id: String) async throws {
-        try await http.post("/v1/admin/users/\(id)/reset-2fa", body: EmptyBody())
+        try await http.post("/v1/users/\(id)/reset-2fa", body: EmptyBody())
     }
 }
 

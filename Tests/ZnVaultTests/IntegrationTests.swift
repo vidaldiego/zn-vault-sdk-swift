@@ -8,27 +8,547 @@ import XCTest
 /// These tests require:
 /// - A running ZN-Vault server
 /// - Environment variables:
-///   - ZNVAULT_BASE_URL: Server URL (e.g., "https://vault.zincapp.com")
+///   - ZNVAULT_BASE_URL: Server URL (e.g., "https://localhost:8443")
+///
+/// Authentication (one of):
 ///   - ZNVAULT_API_KEY: Valid API key for authentication
+///   - ZNVAULT_USERNAME + ZNVAULT_PASSWORD: Username/password for JWT login
 ///
 /// Run with: swift test --filter IntegrationTests
-/// Or set environment variables and run: ZNVAULT_BASE_URL=... ZNVAULT_API_KEY=... swift test
-final class IntegrationTests: XCTestCase {
+/// Or set environment variables and run: ZNVAULT_BASE_URL=... ZNVAULT_USERNAME=... ZNVAULT_PASSWORD=... swift test
+
+// MARK: - Health Integration Tests
+
+final class HealthIntegrationTests: XCTestCase {
 
     var client: ZnVaultClient!
 
     override func setUp() async throws {
-        // Skip if environment variables not set
-        guard let baseURL = ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"],
-              let apiKey = ProcessInfo.processInfo.environment["ZNVAULT_API_KEY"] else {
-            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL and ZNVAULT_API_KEY environment variables")
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try TestConfig.createTestClient()
+    }
+
+    func testHealthCheck() async throws {
+        let health = try await client.health.check()
+        XCTAssertEqual(health.status, "ok")
+        print("✓ Health status: \(health.status)")
+    }
+
+    func testIsHealthy() async throws {
+        let healthy = await client.health.isHealthy()
+        XCTAssertTrue(healthy)
+        print("✓ Health check successful")
+    }
+}
+
+// MARK: - Authentication Integration Tests
+
+final class AuthIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try TestConfig.createTestClient()
+    }
+
+    func testLoginSuperadmin() async throws {
+        let response = try await client.auth.login(
+            username: TestConfig.Users.superadminUsername,
+            password: TestConfig.Users.superadminPassword
+        )
+
+        XCTAssertNotNil(response.accessToken)
+        XCTAssertNotNil(response.refreshToken)
+        XCTAssertGreaterThan(response.expiresIn, 0)
+
+        print("✓ Logged in as superadmin, token expires in \(response.expiresIn)s")
+    }
+
+    func testLoginRegularUser() async throws {
+        let response = try await client.auth.login(
+            username: TestConfig.Users.regularUserUsername,
+            password: TestConfig.Users.regularUserPassword
+        )
+
+        XCTAssertNotNil(response.accessToken)
+        print("✓ Logged in as regular user")
+    }
+
+    func testLoginInvalidCredentials() async throws {
+        do {
+            _ = try await client.auth.login(
+                username: "invalid_user",
+                password: "wrong_password"
+            )
+            XCTFail("Should have thrown authentication error")
+        } catch {
+            print("✓ Invalid credentials correctly rejected")
+        }
+    }
+
+    func testGetCurrentUser() async throws {
+        _ = try await client.auth.login(
+            username: TestConfig.Users.superadminUsername,
+            password: TestConfig.Users.superadminPassword
+        )
+
+        let response = try await client.auth.me()
+
+        XCTAssertEqual(response.user.username, TestConfig.Users.superadminUsername)
+        XCTAssertNotNil(response.user.id)
+        print("✓ Current user: \(response.user.username) (\(response.user.role?.rawValue ?? "unknown"))")
+    }
+}
+
+// MARK: - Secrets Integration Tests
+
+final class SecretsIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+    var createdSecretIds: [String] = []
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        // Use regular user for secrets - they have secret:read:value permission
+        client = try await TestConfig.createRegularUserClient()
+        createdSecretIds = []
+    }
+
+    override func tearDown() async throws {
+        // Cleanup created secrets
+        for id in createdSecretIds {
+            do {
+                try await client.secrets.delete(id: id)
+                print("  Cleaned up secret: \(id)")
+            } catch {
+                // Ignore cleanup errors
+            }
+        }
+        createdSecretIds = []
+    }
+
+    func testCreateCredentialSecret() async throws {
+        let alias = TestConfig.uniqueAlias("creds")
+
+        let secret = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .credential,
+            data: [
+                "username": "testuser",
+                "password": "testpass123"
+            ],
+            tags: ["test", "credential"]
+        )
+
+        createdSecretIds.append(secret.id)
+
+        XCTAssertNotNil(secret.id)
+        XCTAssertEqual(secret.alias, alias)
+        XCTAssertEqual(secret.tenant, TestConfig.defaultTenant)
+        XCTAssertEqual(secret.type, .credential)
+        XCTAssertEqual(secret.version, 1)
+
+        print("✓ Created credential secret: \(secret.id)")
+        print("  Alias: \(secret.alias ?? "nil")")
+        print("  Version: \(secret.version)")
+    }
+
+    func testCreateOpaqueSecret() async throws {
+        let alias = TestConfig.uniqueAlias("opaque")
+
+        let secret = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .opaque,
+            data: [
+                "api_key": "sk_live_abc123",
+                "api_secret": "secret_xyz789"
+            ]
+        )
+
+        createdSecretIds.append(secret.id)
+
+        XCTAssertNotNil(secret.id)
+        XCTAssertEqual(secret.type, .opaque)
+
+        print("✓ Created opaque secret: \(secret.id)")
+    }
+
+    func testDecryptSecret() async throws {
+        let alias = TestConfig.uniqueAlias("decrypt")
+
+        let created = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .credential,
+            data: [
+                "username": "decryptuser",
+                "password": "decryptpass"
+            ]
+        )
+
+        createdSecretIds.append(created.id)
+
+        // Decrypt it
+        let data = try await client.secrets.decrypt(id: created.id)
+
+        XCTAssertEqual(data.data["username"]?.value as? String, "decryptuser")
+        XCTAssertEqual(data.data["password"]?.value as? String, "decryptpass")
+
+        print("✓ Decrypted secret successfully")
+        print("  Username: \(data.data["username"]?.value ?? "nil")")
+    }
+
+    func testUpdateSecret() async throws {
+        let alias = TestConfig.uniqueAlias("update")
+
+        let created = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .opaque,
+            data: ["key": "original_value"]
+        )
+
+        createdSecretIds.append(created.id)
+        XCTAssertEqual(created.version, 1)
+
+        // Update it
+        let updated = try await client.secrets.update(
+            id: created.id,
+            data: ["key": "updated_value"]
+        )
+
+        XCTAssertEqual(updated.version, 2)
+
+        // Verify the value changed
+        let data = try await client.secrets.decrypt(id: updated.id)
+        XCTAssertEqual(data.data["key"]?.value as? String, "updated_value")
+
+        print("✓ Updated secret, version: \(created.version) -> \(updated.version)")
+    }
+
+    func testRotateSecret() async throws {
+        let alias = TestConfig.uniqueAlias("rotate")
+
+        let created = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .credential,
+            data: [
+                "username": "user",
+                "password": "oldpass"
+            ]
+        )
+
+        createdSecretIds.append(created.id)
+
+        // Rotate it
+        let rotated = try await client.secrets.rotate(
+            id: created.id,
+            data: [
+                "username": "user",
+                "password": "newpass"
+            ]
+        )
+
+        XCTAssertEqual(rotated.version, 2)
+
+        // Verify new value
+        let data = try await client.secrets.decrypt(id: rotated.id)
+        XCTAssertEqual(data.data["password"]?.value as? String, "newpass")
+
+        print("✓ Rotated secret, version: \(created.version) -> \(rotated.version)")
+    }
+
+    func testListSecrets() async throws {
+        // Create some secrets
+        for i in 0..<3 {
+            let secret = try await client.secrets.create(
+                alias: TestConfig.uniqueAlias("list-\(i)"),
+                tenant: TestConfig.defaultTenant,
+                type: .opaque,
+                data: ["index": i]
+            )
+            createdSecretIds.append(secret.id)
         }
 
-        client = try ZnVaultClient.builder()
+        // List secrets
+        let secrets = try await client.secrets.list(filter: SecretFilter(tenant: TestConfig.defaultTenant))
+
+        XCTAssertGreaterThanOrEqual(secrets.count, 3)
+        print("✓ Listed \(secrets.count) secrets")
+    }
+
+    func testDeleteSecret() async throws {
+        let alias = TestConfig.uniqueAlias("delete")
+
+        let created = try await client.secrets.create(
+            alias: alias,
+            tenant: TestConfig.defaultTenant,
+            type: .opaque,
+            data: ["key": "value"]
+        )
+
+        // Delete it (don't add to cleanup list since we're testing delete)
+        try await client.secrets.delete(id: created.id)
+
+        // Verify it's gone
+        do {
+            _ = try await client.secrets.get(id: created.id)
+            XCTFail("Should have thrown not found error")
+        } catch {
+            print("✓ Deleted secret: \(created.id)")
+        }
+    }
+}
+
+// MARK: - KMS Integration Tests
+
+final class KmsIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+    var createdKeyIds: [String] = []
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try await TestConfig.createSuperadminClient()
+        createdKeyIds = []
+    }
+
+    override func tearDown() async throws {
+        // Schedule deletion for created keys
+        for keyId in createdKeyIds {
+            do {
+                _ = try await client.kms.scheduleKeyDeletion(keyId: keyId, pendingWindowDays: 7)
+                print("  Scheduled deletion for key: \(keyId)")
+            } catch {
+                // Ignore cleanup errors
+            }
+        }
+        createdKeyIds = []
+    }
+
+    func testListKeys() async throws {
+        let page = try await client.kms.listKeys(tenant: TestConfig.defaultTenant)
+        XCTAssertNotNil(page.items)
+        print("✓ Listed \(page.items.count) keys")
+    }
+
+    func testEncryptDecrypt() async throws {
+        // First list keys to find an existing one to use
+        let page = try await client.kms.listKeys(tenant: TestConfig.defaultTenant)
+
+        guard let key = page.items.first else {
+            throw XCTSkip("No KMS keys available for testing")
+        }
+
+        let plaintext = "This is sensitive data that needs encryption"
+
+        // Encrypt
+        let encrypted = try await client.kms.encrypt(
+            keyId: key.keyId,
+            plaintext: plaintext
+        )
+
+        XCTAssertNotNil(encrypted.ciphertext)
+        XCTAssertNotEqual(plaintext, encrypted.ciphertext)
+
+        print("✓ Encrypted data: \(encrypted.ciphertext.prefix(50))...")
+
+        // Decrypt - need to convert base64 string to Data
+        guard let ciphertextData = Data(base64Encoded: encrypted.ciphertext) else {
+            XCTFail("Invalid ciphertext encoding")
+            return
+        }
+
+        let decrypted = try await client.kms.decryptToString(
+            keyId: key.keyId,
+            ciphertext: ciphertextData
+        )
+
+        XCTAssertEqual(plaintext, decrypted)
+        print("✓ Decrypted data matches original")
+    }
+}
+
+// MARK: - User Integration Tests
+
+final class UserIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+    var createdUserIds: [String] = []
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try await TestConfig.createSuperadminClient()
+        createdUserIds = []
+    }
+
+    override func tearDown() async throws {
+        // Cleanup created users
+        for id in createdUserIds {
+            do {
+                try await client.users.delete(id: id)
+                print("  Cleaned up user: \(id)")
+            } catch {
+                // Ignore cleanup errors
+            }
+        }
+        createdUserIds = []
+    }
+
+    func testListUsers() async throws {
+        let page = try await client.users.list()
+        XCTAssertNotNil(page.items)
+        print("✓ Listed \(page.items.count) users")
+    }
+
+    func testCreateUser() async throws {
+        let username = TestConfig.uniqueId("testuser")
+
+        let user = try await client.users.create(
+            username: username,
+            password: "TestPassword123#",
+            email: "\(username)@example.com",
+            tenantId: TestConfig.defaultTenant,
+            role: "user"
+        )
+
+        createdUserIds.append(user.id)
+
+        XCTAssertNotNil(user.id)
+        XCTAssertEqual(user.username, username)
+
+        print("✓ Created user: \(user.username)")
+        print("  ID: \(user.id)")
+    }
+
+    func testDeleteUser() async throws {
+        let username = TestConfig.uniqueId("deleteuser")
+
+        let user = try await client.users.create(
+            username: username,
+            password: "TestPassword123#",
+            tenantId: TestConfig.defaultTenant
+        )
+
+        // Delete it (don't add to cleanup list)
+        try await client.users.delete(id: user.id)
+
+        print("✓ Deleted user: \(user.username)")
+    }
+}
+
+// MARK: - Tenant Integration Tests
+
+final class TenantIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try await TestConfig.createSuperadminClient()
+    }
+
+    func testListTenants() async throws {
+        let page = try await client.tenants.list()
+        XCTAssertNotNil(page.items)
+        print("✓ Listed \(page.items.count) tenants")
+    }
+}
+
+// MARK: - Role Integration Tests
+
+final class RoleIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try await TestConfig.createSuperadminClient()
+    }
+
+    func testListRoles() async throws {
+        let page = try await client.roles.list()
+        XCTAssertNotNil(page.items)
+        print("✓ Listed \(page.items.count) roles")
+    }
+}
+
+// MARK: - Audit Integration Tests
+
+final class AuditIntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+        client = try await TestConfig.createSuperadminClient()
+    }
+
+    func testListAuditLogs() async throws {
+        let page = try await client.audit.list()
+        XCTAssertNotNil(page.items)
+        print("✓ Listed \(page.items.count) audit entries")
+    }
+}
+
+// MARK: - Legacy Integration Tests (for backward compatibility)
+
+final class IntegrationTests: XCTestCase {
+
+    var client: ZnVaultClient!
+    static let defaultTenant = "zincapp"
+
+    override func setUp() async throws {
+        // Skip if base URL not set
+        guard let baseURL = ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] else {
+            throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
+        }
+
+        let apiKey = ProcessInfo.processInfo.environment["ZNVAULT_API_KEY"]
+        let username = ProcessInfo.processInfo.environment["ZNVAULT_USERNAME"]
+        let password = ProcessInfo.processInfo.environment["ZNVAULT_PASSWORD"]
+
+        // Require either API key or username/password
+        guard apiKey != nil || (username != nil && password != nil) else {
+            throw XCTSkip("Integration tests require ZNVAULT_API_KEY or (ZNVAULT_USERNAME + ZNVAULT_PASSWORD)")
+        }
+
+        // Build client
+        var builder = ZnVaultClient.builder()
             .baseURL(baseURL)
-            .apiKey(apiKey)
             .trustSelfSigned(true)
-            .build()
+            .insecureTLS(true)
+
+        if let apiKey = apiKey {
+            builder = builder.apiKey(apiKey)
+        }
+
+        client = try builder.build()
+
+        // If using username/password, login first
+        if apiKey == nil, let username = username, let password = password {
+            _ = try await client.auth.login(username: username, password: password)
+        }
     }
 
     // MARK: - Health Check
@@ -45,23 +565,19 @@ final class IntegrationTests: XCTestCase {
         XCTAssertNotNil(response.user.id)
         XCTAssertNotNil(response.user.username)
         XCTAssertNotNil(response.authMethod)
-        // Verify date was parsed (this would have caught the SQLite format issue)
-        // createdAt might be nil depending on API response, but if present it should be a valid Date
     }
 
     // MARK: - Secrets Tests (read-only)
 
     func testListSecrets() async throws {
         let secrets = try await client.secrets.list()
-        // API returns array of secrets (may be empty)
         XCTAssertGreaterThanOrEqual(secrets.count, 0)
     }
 
     // MARK: - KMS Tests (read-only)
 
     func testListKmsKeys() async throws {
-        // KMS list requires tenant parameter - use "zincapp" as default test tenant
-        let page = try await client.kms.listKeys(tenant: "zincapp")
+        let page = try await client.kms.listKeys(tenant: Self.defaultTenant)
         XCTAssertNotNil(page.items)
     }
 

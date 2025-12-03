@@ -76,7 +76,19 @@ public struct User: Codable, Sendable, Identifiable {
         status = try container.decodeIfPresent(UserStatus.self, forKey: .status)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
-        lastLogin = try container.decodeIfPresent(Date.self, forKey: .lastLogin)
+
+        // Handle lastLogin - API may return empty string for users who never logged in
+        // Try to decode as Date first, if that fails try as String (and treat empty as nil)
+        if let date = try? container.decodeIfPresent(Date.self, forKey: .lastLogin) {
+            lastLogin = date
+        } else if let str = try? container.decodeIfPresent(String.self, forKey: .lastLogin), !str.isEmpty {
+            // Non-empty string that couldn't be decoded as Date - this is unexpected
+            lastLogin = nil
+        } else {
+            // Empty string or null
+            lastLogin = nil
+        }
+
         permissions = try container.decodeIfPresent([String].self, forKey: .permissions)
         roles = try container.decodeIfPresent([RoleAssignment].self, forKey: .roles)
     }
@@ -102,8 +114,7 @@ public struct CreateUserRequest: Codable, Sendable {
     public let tenantId: String?
 
     enum CodingKeys: String, CodingKey {
-        case username, password, email, role
-        case tenantId = "tenant_id"
+        case username, password, email, role, tenantId
     }
 
     public init(

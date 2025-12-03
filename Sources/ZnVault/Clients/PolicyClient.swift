@@ -19,7 +19,7 @@ public final class PolicyClient: Sendable {
         document: PolicyDocument
     ) async throws -> Policy {
         let request = try CreatePolicyRequest(name: name, description: description, document: document)
-        return try await http.post("/v1/admin/policies", body: request, responseType: Policy.self)
+        return try await http.post("/v1/policies", body: request, responseType: Policy.self)
     }
 
     /// Create policy with JSON document string.
@@ -29,17 +29,17 @@ public final class PolicyClient: Sendable {
         policyDocument: String
     ) async throws -> Policy {
         let request = CreatePolicyRequest(name: name, description: description, policyDocument: policyDocument)
-        return try await http.post("/v1/admin/policies", body: request, responseType: Policy.self)
+        return try await http.post("/v1/policies", body: request, responseType: Policy.self)
     }
 
     /// Create policy with request object.
     public func create(request: CreatePolicyRequest) async throws -> Policy {
-        return try await http.post("/v1/admin/policies", body: request, responseType: Policy.self)
+        return try await http.post("/v1/policies", body: request, responseType: Policy.self)
     }
 
     /// Get policy by ID.
     public func get(id: String) async throws -> Policy {
-        return try await http.get("/v1/admin/policies/\(id)", responseType: Policy.self)
+        return try await http.get("/v1/policies/\(id)", responseType: Policy.self)
     }
 
     /// List policies.
@@ -52,29 +52,29 @@ public final class PolicyClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/admin/policies", query: query, responseType: Page<Policy>.self)
+        return try await http.get("/v1/policies", query: query, responseType: Page<Policy>.self)
     }
 
     /// Update policy.
     public func update(id: String, request: UpdatePolicyRequest) async throws -> Policy {
-        return try await http.patch("/v1/admin/policies/\(id)", body: request, responseType: Policy.self)
+        return try await http.patch("/v1/policies/\(id)", body: request, responseType: Policy.self)
     }
 
     /// Delete policy.
     public func delete(id: String) async throws {
-        try await http.delete("/v1/admin/policies/\(id)")
+        try await http.delete("/v1/policies/\(id)")
     }
 
     // MARK: - Policy Status
 
     /// Activate policy.
     public func activate(id: String) async throws -> Policy {
-        return try await http.post("/v1/admin/policies/\(id)/activate", responseType: Policy.self)
+        return try await http.post("/v1/policies/\(id)/activate", responseType: Policy.self)
     }
 
     /// Deactivate policy.
     public func deactivate(id: String) async throws -> Policy {
-        return try await http.post("/v1/admin/policies/\(id)/deactivate", responseType: Policy.self)
+        return try await http.post("/v1/policies/\(id)/deactivate", responseType: Policy.self)
     }
 
     // MARK: - Attachments
@@ -82,35 +82,35 @@ public final class PolicyClient: Sendable {
     /// Attach policy to user.
     public func attachToUser(policyId: String, userId: String) async throws -> PolicyAttachment {
         let request = AttachPolicyRequest(policyId: policyId, userId: userId)
-        return try await http.post("/v1/admin/policies/\(policyId)/attach", body: request, responseType: PolicyAttachment.self)
+        return try await http.post("/v1/policies/\(policyId)/attach/user", body: request, responseType: PolicyAttachment.self)
     }
 
     /// Attach policy to role.
     public func attachToRole(policyId: String, roleId: String) async throws -> PolicyAttachment {
         let request = AttachPolicyRequest(policyId: policyId, roleId: roleId)
-        return try await http.post("/v1/admin/policies/\(policyId)/attach", body: request, responseType: PolicyAttachment.self)
+        return try await http.post("/v1/policies/\(policyId)/attach/role", body: request, responseType: PolicyAttachment.self)
     }
 
     /// Detach policy from user.
     public func detachFromUser(policyId: String, userId: String) async throws {
-        try await http.delete("/v1/admin/policies/\(policyId)/users/\(userId)")
+        try await http.delete("/v1/policies/\(policyId)/attach/user/\(userId)")
     }
 
     /// Detach policy from role.
     public func detachFromRole(policyId: String, roleId: String) async throws {
-        try await http.delete("/v1/admin/policies/\(policyId)/roles/\(roleId)")
+        try await http.delete("/v1/policies/\(policyId)/attach/role/\(roleId)")
     }
 
     /// List policy attachments.
     public func listAttachments(policyId: String) async throws -> [PolicyAttachment] {
-        return try await http.get("/v1/admin/policies/\(policyId)/attachments", responseType: [PolicyAttachment].self)
+        return try await http.get("/v1/policies/\(policyId)/attachments", responseType: [PolicyAttachment].self)
     }
 
     // MARK: - Evaluation
 
     /// Evaluate policy for a request.
     public func evaluate(request: PolicyEvaluationRequest) async throws -> PolicyEvaluationResult {
-        return try await http.post("/v1/admin/policies/evaluate", body: request, responseType: PolicyEvaluationResult.self)
+        return try await http.post("/v1/policies/evaluate", body: request, responseType: PolicyEvaluationResult.self)
     }
 
     // MARK: - Helper Methods
