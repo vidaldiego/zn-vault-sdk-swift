@@ -134,6 +134,29 @@ public final class AuthClient: Sendable {
         try await http.delete("/auth/api-keys/\(id)")
     }
 
+    /// Rotate an API key by ID.
+    ///
+    /// This creates a new API key with the same configuration and revokes the old one.
+    /// - Parameter id: The ID of the API key to rotate.
+    /// - Returns: The new API key (key value is only shown once!).
+    public func rotateApiKey(id: String) async throws -> CreateApiKeyResponse {
+        return try await http.post("/auth/api-keys/\(id)/rotate", responseType: CreateApiKeyResponse.self)
+    }
+
+    /// Get information about the current API key (when authenticated via API key).
+    /// - Returns: The current API key information.
+    public func getCurrentApiKey() async throws -> ApiKey {
+        return try await http.get("/auth/api-keys/self", responseType: ApiKey.self)
+    }
+
+    /// Rotate the current API key (self-rotation when authenticated via API key).
+    ///
+    /// This creates a new API key with the same configuration and revokes the current one.
+    /// - Returns: The new API key (key value is only shown once!).
+    public func rotateCurrentApiKey() async throws -> CreateApiKeyResponse {
+        return try await http.post("/auth/api-keys/self/rotate", responseType: CreateApiKeyResponse.self)
+    }
+
     // MARK: - Token Information
 
     /// Get current user information.

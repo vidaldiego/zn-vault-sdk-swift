@@ -271,4 +271,91 @@ final class ZnVaultTests: XCTestCase {
         XCTAssertTrue(pageWithMore.hasMore)
         XCTAssertFalse(lastPage.hasMore)
     }
+
+    // MARK: - API Key Request Types Tests
+
+    func testCreateApiKeyRequest() throws {
+        let request = CreateApiKeyRequest(
+            name: "test-api-key",
+            expiresIn: "90d",
+            permissions: ["secret:read"]
+        )
+
+        XCTAssertEqual(request.name, "test-api-key")
+        XCTAssertEqual(request.expiresIn, "90d")
+        XCTAssertEqual(request.permissions, ["secret:read"])
+    }
+
+    func testCreateApiKeyRequestEncoding() throws {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+
+        let request = CreateApiKeyRequest(
+            name: "my-service-key",
+            expiresIn: "30d",
+            permissions: nil
+        )
+
+        let data = try encoder.encode(request)
+        let json = String(data: data, encoding: .utf8)!
+
+        XCTAssertTrue(json.contains("\"name\""))
+        XCTAssertTrue(json.contains("\"my-service-key\""))
+        XCTAssertTrue(json.contains("\"expires_in\""))
+        XCTAssertTrue(json.contains("\"30d\""))
+    }
+
+    func testApiKeyDecoding() throws {
+        let json = """
+        {
+            "id": "key-123",
+            "name": "test-key",
+            "prefix": "znv_abc",
+            "user_id": "user-456",
+            "created_at": "2024-01-01T00:00:00Z",
+            "expires_at": "2024-04-01T00:00:00Z",
+            "last_used": "2024-01-15T00:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let apiKey = try decoder.decode(ApiKey.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(apiKey.id, "key-123")
+        XCTAssertEqual(apiKey.name, "test-key")
+        XCTAssertEqual(apiKey.prefix, "znv_abc")
+        XCTAssertEqual(apiKey.userId, "user-456")
+        XCTAssertNotNil(apiKey.createdAt)
+        XCTAssertNotNil(apiKey.expiresAt)
+        XCTAssertNotNil(apiKey.lastUsed)
+    }
+
+    func testCreateApiKeyResponseDecoding() throws {
+        let json = """
+        {
+            "key": "znv_abc123xyz789",
+            "api_key": {
+                "id": "key-123",
+                "name": "test-key",
+                "prefix": "znv_abc",
+                "created_at": "2024-01-01T00:00:00Z",
+                "expires_at": "2024-04-01T00:00:00Z"
+            },
+            "message": "API key created successfully"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let response = try decoder.decode(CreateApiKeyResponse.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(response.key, "znv_abc123xyz789")
+        XCTAssertEqual(response.apiKey?.id, "key-123")
+        XCTAssertEqual(response.apiKey?.name, "test-key")
+        XCTAssertEqual(response.apiKey?.prefix, "znv_abc")
+        XCTAssertEqual(response.message, "API key created successfully")
+    }
 }
