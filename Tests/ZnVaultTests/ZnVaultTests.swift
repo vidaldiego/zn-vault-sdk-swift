@@ -358,4 +358,125 @@ final class ZnVaultTests: XCTestCase {
         XCTAssertEqual(response.apiKey?.prefix, "znv_abc")
         XCTAssertEqual(response.message, "API key created successfully")
     }
+
+    // MARK: - Date Format Tests (using real API decoder)
+
+    func testDateDecodingWithSQLiteFormat() throws {
+        // Test with SQLite datetime format that the real API returns
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-03 14:18:42"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertEqual(user.username, "testuser")
+        XCTAssertNotNil(user.createdAt)
+    }
+
+    func testDateDecodingWithISO8601Format() throws {
+        // Test with ISO8601 format
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-03T14:18:42Z"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertNotNil(user.createdAt)
+    }
+
+    func testDateDecodingWithISO8601FractionalSeconds() throws {
+        // Test with ISO8601 + fractional seconds
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-03T14:18:42.123Z"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertNotNil(user.createdAt)
+    }
+
+    func testMeResponseDecoding() throws {
+        // Test the actual /auth/me response format from the API
+        let json = """
+        {
+            "user": {
+                "id": "user-123",
+                "username": "testuser",
+                "totp_enabled": false,
+                "created_at": "2025-12-03 14:18:42"
+            },
+            "authMethod": "apikey"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let response = try decoder.decode(MeResponse.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(response.user.id, "user-123")
+        XCTAssertEqual(response.user.username, "testuser")
+        XCTAssertEqual(response.authMethod, "apikey")
+        XCTAssertNotNil(response.user.createdAt)
+    }
+
+    /// Creates a decoder matching the one used by ZnVaultHttpClient
+    private func makeApiDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+
+            // Try ISO8601 with fractional seconds
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = isoFormatter.date(from: string) {
+                return date
+            }
+
+            // Try without fractional seconds
+            isoFormatter.formatOptions = [.withInternetDateTime]
+            if let date = isoFormatter.date(from: string) {
+                return date
+            }
+
+            // Try SQLite datetime format: "YYYY-MM-DD HH:MM:SS"
+            let sqliteFormatter = DateFormatter()
+            sqliteFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            sqliteFormatter.timeZone = TimeZone(identifier: "UTC")
+            if let date = sqliteFormatter.date(from: string) {
+                return date
+            }
+
+            // Try Unix timestamp
+            if let timestamp = Double(string) {
+                return Date(timeIntervalSince1970: timestamp)
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format: \(string)"
+            )
+        }
+        return decoder
+    }
 }
