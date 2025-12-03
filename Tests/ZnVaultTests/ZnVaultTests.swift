@@ -148,15 +148,13 @@ final class ZnVaultTests: XCTestCase {
 
     func testSecretFilter() {
         let filter = SecretFilter(
-            tenant: "acme",
-            env: "production",
             type: .credential,
+            tags: ["test"],
             limit: 100
         )
 
-        XCTAssertEqual(filter.tenant, "acme")
-        XCTAssertEqual(filter.env, "production")
-        XCTAssertEqual(filter.type, .credential)
+        XCTAssertEqual(filter.type, SecretType.credential)
+        XCTAssertEqual(filter.tags, ["test"])
         XCTAssertEqual(filter.limit, 100)
         XCTAssertEqual(filter.offset, 0)
     }
@@ -199,15 +197,13 @@ final class ZnVaultTests: XCTestCase {
     func testCreateSecretRequest() throws {
         let request = CreateSecretRequest(
             alias: "test/secret",
-            tenant: "acme",
             type: .credential,
             data: ["username": AnyCodable("user"), "password": AnyCodable("pass")],
             tags: ["test"]
         )
 
         XCTAssertEqual(request.alias, "test/secret")
-        XCTAssertEqual(request.tenant, "acme")
-        XCTAssertEqual(request.type, .credential)
+        XCTAssertEqual(request.type, SecretType.credential)
         XCTAssertEqual(request.tags, ["test"])
     }
 

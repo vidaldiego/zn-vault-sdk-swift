@@ -23,8 +23,6 @@ public struct Secret: Codable, Sendable, Identifiable {
     public let contentType: String?
     public let createdBy: String?
     public let checksum: String?
-    public let env: String?
-    public let service: String?
 
     enum CodingKeys: String, CodingKey {
         case id, alias, tenant, type, version, tags
@@ -33,7 +31,7 @@ public struct Secret: Codable, Sendable, Identifiable {
         case ttlUntil = "ttl_until"
         case contentType = "content_type"
         case createdBy = "created_by"
-        case checksum, env, service
+        case checksum
     }
 }
 
@@ -57,38 +55,28 @@ public struct SecretData: Codable, Sendable {
 /// Request to create a new secret.
 public struct CreateSecretRequest: Codable, Sendable {
     public let alias: String
-    public let tenant: String?
     public let type: SecretType
     public let data: [String: AnyCodable]
     public let tags: [String]?
     public let ttlUntil: Date?
-    public let env: String?
-    public let service: String?
 
     enum CodingKeys: String, CodingKey {
-        case alias, tenant, type, data, tags
+        case alias, type, data, tags
         case ttlUntil = "ttl_until"
-        case env, service
     }
 
     public init(
         alias: String,
-        tenant: String? = nil,
         type: SecretType,
         data: [String: AnyCodable],
-        env: String? = nil,
-        service: String? = nil,
         tags: [String]? = nil,
         ttlUntil: Date? = nil
     ) {
         self.alias = alias
-        self.tenant = tenant
         self.type = type
         self.data = data
         self.tags = tags
         self.ttlUntil = ttlUntil
-        self.env = env
-        self.service = service
     }
 }
 
@@ -114,9 +102,6 @@ public struct UpdateSecretMetadataRequest: Codable, Sendable {
 
 /// Filter for listing secrets.
 public struct SecretFilter: Sendable {
-    public let tenant: String?
-    public let env: String?
-    public let service: String?
     public let type: SecretType?
     public let tags: [String]?
     public let limit: Int
@@ -124,18 +109,12 @@ public struct SecretFilter: Sendable {
     public let marker: String?
 
     public init(
-        tenant: String? = nil,
-        env: String? = nil,
-        service: String? = nil,
         type: SecretType? = nil,
         tags: [String]? = nil,
         limit: Int = 50,
         offset: Int = 0,
         marker: String? = nil
     ) {
-        self.tenant = tenant
-        self.env = env
-        self.service = service
         self.type = type
         self.tags = tags
         self.limit = limit

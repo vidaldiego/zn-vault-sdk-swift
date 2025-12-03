@@ -15,30 +15,21 @@ public final class SecretClient: Sendable {
     /// Create a new secret.
     /// - Parameters:
     ///   - alias: The alias/name for the secret
-    ///   - tenant: Optional tenant ID. If not provided, uses the authenticated user's tenant.
     ///   - type: The type of secret (opaque, credential, setting)
     ///   - data: The secret data as key-value pairs
-    ///   - env: Optional environment (e.g., "production", "staging")
-    ///   - service: Optional service name
     ///   - tags: Optional tags for categorization
     ///   - ttlUntil: Optional expiration date
     public func create(
         alias: String,
-        tenant: String? = nil,
         type: SecretType,
         data: [String: Any],
-        env: String? = nil,
-        service: String? = nil,
         tags: [String]? = nil,
         ttlUntil: Date? = nil
     ) async throws -> Secret {
         let request = CreateSecretRequest(
             alias: alias,
-            tenant: tenant,
             type: type,
             data: data.mapValues { AnyCodable($0) },
-            env: env,
-            service: service,
             tags: tags,
             ttlUntil: ttlUntil
         )
@@ -55,11 +46,11 @@ public final class SecretClient: Sendable {
         return try await http.get("/v1/secrets/\(id)/meta", responseType: Secret.self)
     }
 
-    /// Get secret by alias (tenant and alias as path parameters).
-    public func getByAlias(tenant: String, alias: String) async throws -> Secret {
+    /// Get secret by alias.
+    public func getByAlias(alias: String) async throws -> Secret {
         // URL-encode the alias in case it contains special characters
         let encodedAlias = alias.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? alias
-        return try await http.get("/v1/secrets/\(tenant)/\(encodedAlias)", responseType: Secret.self)
+        return try await http.get("/v1/secrets/alias/\(encodedAlias)", responseType: Secret.self)
     }
 
     /// Decrypt and get secret value.
@@ -99,15 +90,6 @@ public final class SecretClient: Sendable {
     public func list(filter: SecretFilter = SecretFilter()) async throws -> [Secret] {
         var query: [String: String] = [:]
 
-        if let tenant = filter.tenant {
-            query["tenant"] = tenant
-        }
-        if let env = filter.env {
-            query["env"] = env
-        }
-        if let service = filter.service {
-            query["service"] = service
-        }
         if let type = filter.type {
             query["type"] = type.rawValue
         }
@@ -162,14 +144,12 @@ public final class SecretClient: Sendable {
     /// Upload a file as a secret.
     /// - Parameters:
     ///   - alias: The alias/name for the secret
-    ///   - tenant: Optional tenant ID. If not provided, uses the authenticated user's tenant.
     ///   - fileData: The file data to upload
     ///   - filename: The original filename
     ///   - contentType: Optional MIME type (auto-detected if not provided)
     ///   - tags: Optional tags for categorization
     public func uploadFile(
         alias: String,
-        tenant: String? = nil,
         fileData: Data,
         filename: String,
         contentType: String? = nil,
@@ -180,7 +160,6 @@ public final class SecretClient: Sendable {
 
         return try await create(
             alias: alias,
-            tenant: tenant,
             type: .opaque,
             data: [
                 "filename": filename,

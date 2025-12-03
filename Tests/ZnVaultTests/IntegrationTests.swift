@@ -116,7 +116,7 @@ final class SecretsIntegrationTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
             throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
         }
-        // Use regular user for secrets - they have secret:read:value permission
+        // Use regular user for secrets - they have tenant in token for automatic tenant derivation
         client = try await TestConfig.createRegularUserClient()
         createdSecretIds = []
     }
@@ -139,7 +139,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let secret = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .credential,
             data: [
                 "username": "testuser",
@@ -153,11 +152,11 @@ final class SecretsIntegrationTests: XCTestCase {
         XCTAssertNotNil(secret.id)
         XCTAssertEqual(secret.alias, alias)
         XCTAssertEqual(secret.tenant, TestConfig.defaultTenant)
-        XCTAssertEqual(secret.type, .credential)
+        XCTAssertEqual(secret.type, SecretType.credential)
         XCTAssertEqual(secret.version, 1)
 
         print("✓ Created credential secret: \(secret.id)")
-        print("  Alias: \(secret.alias ?? "nil")")
+        print("  Alias: \(secret.alias)")
         print("  Version: \(secret.version)")
     }
 
@@ -166,7 +165,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let secret = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .opaque,
             data: [
                 "api_key": "sk_live_abc123",
@@ -177,7 +175,7 @@ final class SecretsIntegrationTests: XCTestCase {
         createdSecretIds.append(secret.id)
 
         XCTAssertNotNil(secret.id)
-        XCTAssertEqual(secret.type, .opaque)
+        XCTAssertEqual(secret.type, SecretType.opaque)
 
         print("✓ Created opaque secret: \(secret.id)")
     }
@@ -187,7 +185,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let created = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .credential,
             data: [
                 "username": "decryptuser",
@@ -212,7 +209,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let created = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .opaque,
             data: ["key": "original_value"]
         )
@@ -240,7 +236,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let created = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .credential,
             data: [
                 "username": "user",
@@ -273,7 +268,6 @@ final class SecretsIntegrationTests: XCTestCase {
         for i in 0..<3 {
             let secret = try await client.secrets.create(
                 alias: TestConfig.uniqueAlias("list-\(i)"),
-                tenant: TestConfig.defaultTenant,
                 type: .opaque,
                 data: ["index": i]
             )
@@ -281,7 +275,7 @@ final class SecretsIntegrationTests: XCTestCase {
         }
 
         // List secrets
-        let secrets = try await client.secrets.list(filter: SecretFilter(tenant: TestConfig.defaultTenant))
+        let secrets = try await client.secrets.list()
 
         XCTAssertGreaterThanOrEqual(secrets.count, 3)
         print("✓ Listed \(secrets.count) secrets")
@@ -292,7 +286,6 @@ final class SecretsIntegrationTests: XCTestCase {
 
         let created = try await client.secrets.create(
             alias: alias,
-            tenant: TestConfig.defaultTenant,
             type: .opaque,
             data: ["key": "value"]
         )
