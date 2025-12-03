@@ -17,12 +17,36 @@ public enum UserStatus: String, Codable, Sendable {
     case locked
 }
 
+/// Role assignment info (from roles array).
+public struct RoleAssignment: Codable, Sendable {
+    public let id: String
+    public let name: String
+    public let tenantId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case tenantId = "tenant_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        // Handle both tenantId and tenant_id
+        if let tid = try? container.decodeIfPresent(String.self, forKey: .tenantId) {
+            tenantId = tid
+        } else {
+            tenantId = nil
+        }
+    }
+}
+
 /// User account.
 public struct User: Codable, Sendable, Identifiable {
     public let id: String
     public let username: String
     public let email: String?
-    public let role: UserRole
+    public let role: UserRole?
     public let tenantId: String?
     public let totpEnabled: Bool
     public let status: UserStatus?
@@ -30,16 +54,15 @@ public struct User: Codable, Sendable, Identifiable {
     public let updatedAt: Date?
     public let lastLogin: Date?
     public let permissions: [String]?
+    public let roles: [RoleAssignment]?
 
     enum CodingKeys: String, CodingKey {
-        case id, username, email, role
+        case id, username, email, role, status, permissions, roles
         case tenantId = "tenant_id"
         case totpEnabled = "totp_enabled"
-        case status
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case lastLogin = "last_login"
-        case permissions
     }
 
     public init(from decoder: Decoder) throws {
@@ -47,7 +70,7 @@ public struct User: Codable, Sendable, Identifiable {
         id = try container.decode(String.self, forKey: .id)
         username = try container.decode(String.self, forKey: .username)
         email = try container.decodeIfPresent(String.self, forKey: .email)
-        role = try container.decode(UserRole.self, forKey: .role)
+        role = try container.decodeIfPresent(UserRole.self, forKey: .role)
         tenantId = try container.decodeIfPresent(String.self, forKey: .tenantId)
         totpEnabled = try container.decodeIfPresent(Bool.self, forKey: .totpEnabled) ?? false
         status = try container.decodeIfPresent(UserStatus.self, forKey: .status)
@@ -55,6 +78,7 @@ public struct User: Codable, Sendable, Identifiable {
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         lastLogin = try container.decodeIfPresent(Date.self, forKey: .lastLogin)
         permissions = try container.decodeIfPresent([String].self, forKey: .permissions)
+        roles = try container.decodeIfPresent([RoleAssignment].self, forKey: .roles)
     }
 }
 
