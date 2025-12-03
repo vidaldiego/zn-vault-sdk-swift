@@ -85,7 +85,8 @@ public final class SecretClient: Sendable {
     // MARK: - Listing
 
     /// List secrets with optional filters.
-    public func list(filter: SecretFilter = SecretFilter()) async throws -> Page<Secret> {
+    /// Returns an array of secrets (metadata only, not decrypted values).
+    public func list(filter: SecretFilter = SecretFilter()) async throws -> [Secret] {
         var query: [String: String] = [:]
 
         if let tenant = filter.tenant {
@@ -106,39 +107,24 @@ public final class SecretClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/secrets", query: query, responseType: Page<Secret>.self)
+        return try await http.get("/v1/secrets", query: query, responseType: [Secret].self)
     }
 
     /// List all secrets using async sequence.
+    /// Note: The API returns all matching secrets in a single response,
+    /// so this is just a convenience wrapper that yields each secret.
     public func listAll(filter: SecretFilter = SecretFilter()) -> AsyncThrowingStream<Secret, Error> {
         return AsyncThrowingStream { continuation in
             Task {
-                var currentOffset = filter.offset
-                var hasMore = true
-
-                while hasMore {
-                    do {
-                        let currentFilter = SecretFilter(
-                            tenant: filter.tenant,
-                            env: filter.env,
-                            service: filter.service,
-                            type: filter.type,
-                            tags: filter.tags,
-                            limit: filter.limit,
-                            offset: currentOffset
-                        )
-                        let page = try await self.list(filter: currentFilter)
-                        for secret in page.items {
-                            continuation.yield(secret)
-                        }
-                        hasMore = page.hasMore
-                        currentOffset += page.items.count
-                    } catch {
-                        continuation.finish(throwing: error)
-                        return
+                do {
+                    let secrets = try await self.list(filter: filter)
+                    for secret in secrets {
+                        continuation.yield(secret)
                     }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
                 }
-                continuation.finish()
             }
         }
     }
