@@ -23,17 +23,17 @@ public final class RoleClient: Sendable {
             description: description,
             permissions: permissions
         )
-        return try await http.post("/v1/admin/roles", body: request, responseType: Role.self)
+        return try await http.post("/v1/roles", body: request, responseType: Role.self)
     }
 
     /// Create role with request object.
     public func create(request: CreateRoleRequest) async throws -> Role {
-        return try await http.post("/v1/admin/roles", body: request, responseType: Role.self)
+        return try await http.post("/v1/roles", body: request, responseType: Role.self)
     }
 
     /// Get role by ID.
     public func get(id: String) async throws -> Role {
-        return try await http.get("/v1/admin/roles/\(id)", responseType: Role.self)
+        return try await http.get("/v1/roles/\(id)", responseType: Role.self)
     }
 
     /// List roles.
@@ -49,17 +49,17 @@ public final class RoleClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/admin/roles", query: query, responseType: Page<Role>.self)
+        return try await http.get("/v1/roles", query: query, responseType: Page<Role>.self)
     }
 
     /// Update role.
     public func update(id: String, request: UpdateRoleRequest) async throws -> Role {
-        return try await http.patch("/v1/admin/roles/\(id)", body: request, responseType: Role.self)
+        return try await http.patch("/v1/roles/\(id)", body: request, responseType: Role.self)
     }
 
     /// Delete role.
     public func delete(id: String) async throws {
-        try await http.delete("/v1/admin/roles/\(id)")
+        try await http.delete("/v1/roles/\(id)")
     }
 
     // MARK: - Permission Management
@@ -67,13 +67,13 @@ public final class RoleClient: Sendable {
     /// Add permission to role.
     public func addPermission(roleId: String, permission: String) async throws -> Role {
         let request = AddPermissionRequest(permission: permission)
-        return try await http.post("/v1/admin/roles/\(roleId)/permissions", body: request, responseType: Role.self)
+        return try await http.post("/v1/roles/\(roleId)/permissions", body: request, responseType: Role.self)
     }
 
     /// Remove permission from role.
     public func removePermission(roleId: String, permission: String) async throws -> Role {
         return try await http.delete(
-            "/v1/admin/roles/\(roleId)/permissions/\(permission)",
+            "/v1/roles/\(roleId)/permissions/\(permission)",
             responseType: Role.self
         )
     }
@@ -82,25 +82,25 @@ public final class RoleClient: Sendable {
 
     /// Get users with this role.
     public func getUsers(roleId: String) async throws -> [User] {
-        return try await http.get("/v1/admin/roles/\(roleId)/users", responseType: [User].self)
+        return try await http.get("/v1/roles/\(roleId)/users", responseType: [User].self)
     }
 
     /// Assign role to user.
     public func assignToUser(roleId: String, userId: String) async throws {
         let request = AssignRoleRequest(userId: userId, roleId: roleId)
-        try await http.post("/v1/admin/roles/\(roleId)/users", body: request)
+        try await http.post("/v1/roles/\(roleId)/users", body: request)
     }
 
     /// Remove role from user.
     public func removeFromUser(roleId: String, userId: String) async throws {
-        try await http.delete("/v1/admin/roles/\(roleId)/users/\(userId)")
+        try await http.delete("/v1/roles/\(roleId)/users/\(userId)")
     }
 
     // MARK: - System Roles
 
     /// List all available permissions.
     public func listPermissions() async throws -> [Permission] {
-        return try await http.get("/v1/admin/permissions", responseType: [Permission].self)
+        return try await http.get("/v1/permissions", responseType: [Permission].self)
     }
 }
 

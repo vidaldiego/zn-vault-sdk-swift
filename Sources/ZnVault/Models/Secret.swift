@@ -57,7 +57,7 @@ public struct SecretData: Codable, Sendable {
 /// Request to create a new secret.
 public struct CreateSecretRequest: Codable, Sendable {
     public let alias: String
-    public let tenant: String
+    public let tenant: String?
     public let type: SecretType
     public let data: [String: AnyCodable]
     public let tags: [String]?
@@ -73,7 +73,7 @@ public struct CreateSecretRequest: Codable, Sendable {
 
     public init(
         alias: String,
-        tenant: String,
+        tenant: String? = nil,
         type: SecretType,
         data: [String: AnyCodable],
         env: String? = nil,

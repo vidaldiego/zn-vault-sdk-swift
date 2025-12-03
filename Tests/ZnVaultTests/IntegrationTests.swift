@@ -49,12 +49,6 @@ final class IntegrationTests: XCTestCase {
         // createdAt might be nil depending on API response, but if present it should be a valid Date
     }
 
-    // Note: verifyToken endpoint not implemented in current API
-    // func testVerifyToken() async throws {
-    //     let response = try await client.auth.verifyToken()
-    //     XCTAssertTrue(response.valid)
-    // }
-
     // MARK: - Secrets Tests (read-only)
 
     func testListSecrets() async throws {
@@ -64,11 +58,12 @@ final class IntegrationTests: XCTestCase {
     }
 
     // MARK: - KMS Tests (read-only)
-    // Note: KMS list requires tenant parameter
-    // func testListKmsKeys() async throws {
-    //     let page = try await client.kms.listKeys()
-    //     XCTAssertNotNil(page.items)
-    // }
+
+    func testListKmsKeys() async throws {
+        // KMS list requires tenant parameter - use "zincapp" as default test tenant
+        let page = try await client.kms.listKeys(tenant: "zincapp")
+        XCTAssertNotNil(page.items)
+    }
 
     // MARK: - Admin Tests (read-only)
 
@@ -77,17 +72,15 @@ final class IntegrationTests: XCTestCase {
         XCTAssertNotNil(page.items)
     }
 
-    // Note: tenants endpoint has different path in API
-    // func testListTenants() async throws {
-    //     let page = try await client.tenants.list()
-    //     XCTAssertNotNil(page.items)
-    // }
+    func testListTenants() async throws {
+        let page = try await client.tenants.list()
+        XCTAssertNotNil(page.items)
+    }
 
-    // Note: roles endpoint has different path in API
-    // func testListRoles() async throws {
-    //     let page = try await client.roles.list()
-    //     XCTAssertNotNil(page.items)
-    // }
+    func testListRoles() async throws {
+        let page = try await client.roles.list()
+        XCTAssertNotNil(page.items)
+    }
 
     // MARK: - Audit Tests (read-only)
 

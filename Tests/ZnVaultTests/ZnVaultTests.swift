@@ -163,13 +163,15 @@ final class ZnVaultTests: XCTestCase {
 
     func testKeyFilter() {
         let filter = KeyFilter(
+            tenant: "test-tenant",
             state: .enabled,
             usage: .encryptDecrypt,
             limit: 50
         )
 
-        XCTAssertEqual(filter.state, .enabled)
-        XCTAssertEqual(filter.usage, .encryptDecrypt)
+        XCTAssertEqual(filter.tenant, "test-tenant")
+        XCTAssertEqual(filter.state, KeyState.enabled)
+        XCTAssertEqual(filter.usage, KeyUsage.encryptDecrypt)
         XCTAssertEqual(filter.limit, 50)
     }
 

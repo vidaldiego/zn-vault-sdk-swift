@@ -13,9 +13,18 @@ public final class SecretClient: Sendable {
     // MARK: - CRUD Operations
 
     /// Create a new secret.
+    /// - Parameters:
+    ///   - alias: The alias/name for the secret
+    ///   - tenant: Optional tenant ID. If not provided, uses the authenticated user's tenant.
+    ///   - type: The type of secret (opaque, credential, setting)
+    ///   - data: The secret data as key-value pairs
+    ///   - env: Optional environment (e.g., "production", "staging")
+    ///   - service: Optional service name
+    ///   - tags: Optional tags for categorization
+    ///   - ttlUntil: Optional expiration date
     public func create(
         alias: String,
-        tenant: String,
+        tenant: String? = nil,
         type: SecretType,
         data: [String: Any],
         env: String? = nil,
@@ -54,7 +63,7 @@ public final class SecretClient: Sendable {
 
     /// Decrypt and get secret value.
     public func decrypt(id: String) async throws -> SecretData {
-        return try await http.get("/v1/secrets/\(id)/value", responseType: SecretData.self)
+        return try await http.post("/v1/secrets/\(id)/decrypt", responseType: SecretData.self)
     }
 
     /// Update secret data (creates new version).
@@ -138,7 +147,7 @@ public final class SecretClient: Sendable {
 
     /// Decrypt a specific version.
     public func decryptVersion(id: String, version: Int) async throws -> SecretData {
-        return try await http.get("/v1/secrets/\(id)/versions/\(version)/value", responseType: SecretData.self)
+        return try await http.post("/v1/secrets/\(id)/history/\(version)/decrypt", responseType: SecretData.self)
     }
 
     /// Rollback to a previous version.
@@ -150,9 +159,16 @@ public final class SecretClient: Sendable {
     // MARK: - File Operations
 
     /// Upload a file as a secret.
+    /// - Parameters:
+    ///   - alias: The alias/name for the secret
+    ///   - tenant: Optional tenant ID. If not provided, uses the authenticated user's tenant.
+    ///   - fileData: The file data to upload
+    ///   - filename: The original filename
+    ///   - contentType: Optional MIME type (auto-detected if not provided)
+    ///   - tags: Optional tags for categorization
     public func uploadFile(
         alias: String,
-        tenant: String,
+        tenant: String? = nil,
         fileData: Data,
         filename: String,
         contentType: String? = nil,

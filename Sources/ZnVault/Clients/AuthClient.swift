@@ -164,10 +164,6 @@ public final class AuthClient: Sendable {
         return try await http.get("/auth/me", responseType: MeResponse.self)
     }
 
-    /// Verify token is valid.
-    public func verifyToken() async throws -> TokenVerifyResponse {
-        return try await http.get("/auth/verify", responseType: TokenVerifyResponse.self)
-    }
 }
 
 // MARK: - Request/Response Types
@@ -306,17 +302,3 @@ public struct TotpStatusResponse: Codable, Sendable {
     }
 }
 
-/// Response from token verification.
-public struct TokenVerifyResponse: Codable, Sendable {
-    public let valid: Bool
-    public let userId: String?
-    public let username: String?
-    public let expiresAt: Date?
-
-    enum CodingKeys: String, CodingKey {
-        case valid
-        case userId = "user_id"
-        case username
-        case expiresAt = "expires_at"
-    }
-}

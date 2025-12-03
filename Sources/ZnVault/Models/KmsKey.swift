@@ -157,17 +157,20 @@ public struct UpdateKmsKeyRequest: Codable, Sendable {
 
 /// Filter for listing KMS keys.
 public struct KeyFilter: Sendable {
+    public let tenant: String
     public let state: KeyState?
     public let usage: KeyUsage?
     public let limit: Int
     public let offset: Int
 
     public init(
+        tenant: String,
         state: KeyState? = nil,
         usage: KeyUsage? = nil,
         limit: Int = 50,
         offset: Int = 0
     ) {
+        self.tenant = tenant
         self.state = state
         self.usage = usage
         self.limit = limit

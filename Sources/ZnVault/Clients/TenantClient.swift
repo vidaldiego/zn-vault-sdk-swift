@@ -25,17 +25,17 @@ public final class TenantClient: Sendable {
             description: description,
             settings: settings
         )
-        return try await http.post("/v1/admin/tenants", body: request, responseType: Tenant.self)
+        return try await http.post("/v1/tenants", body: request, responseType: Tenant.self)
     }
 
     /// Create tenant with request object.
     public func create(request: CreateTenantRequest) async throws -> Tenant {
-        return try await http.post("/v1/admin/tenants", body: request, responseType: Tenant.self)
+        return try await http.post("/v1/tenants", body: request, responseType: Tenant.self)
     }
 
     /// Get tenant by ID.
     public func get(id: String) async throws -> Tenant {
-        return try await http.get("/v1/admin/tenants/\(id)", responseType: Tenant.self)
+        return try await http.get("/v1/tenants/\(id)", responseType: Tenant.self)
     }
 
     /// List tenants.
@@ -48,48 +48,48 @@ public final class TenantClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/admin/tenants", query: query, responseType: Page<Tenant>.self)
+        return try await http.get("/v1/tenants", query: query, responseType: Page<Tenant>.self)
     }
 
     /// Update tenant.
     public func update(id: String, request: UpdateTenantRequest) async throws -> Tenant {
-        return try await http.patch("/v1/admin/tenants/\(id)", body: request, responseType: Tenant.self)
+        return try await http.patch("/v1/tenants/\(id)", body: request, responseType: Tenant.self)
     }
 
     /// Delete tenant.
     public func delete(id: String) async throws {
-        try await http.delete("/v1/admin/tenants/\(id)")
+        try await http.delete("/v1/tenants/\(id)")
     }
 
     // MARK: - Status Management
 
     /// Activate tenant.
     public func activate(id: String) async throws -> Tenant {
-        return try await http.post("/v1/admin/tenants/\(id)/activate", responseType: Tenant.self)
+        return try await http.post("/v1/tenants/\(id)/activate", responseType: Tenant.self)
     }
 
     /// Suspend tenant.
     public func suspend(id: String) async throws -> Tenant {
-        return try await http.post("/v1/admin/tenants/\(id)/suspend", responseType: Tenant.self)
+        return try await http.post("/v1/tenants/\(id)/suspend", responseType: Tenant.self)
     }
 
     // MARK: - Settings
 
     /// Get tenant settings.
     public func getSettings(id: String) async throws -> TenantSettings {
-        return try await http.get("/v1/admin/tenants/\(id)/settings", responseType: TenantSettings.self)
+        return try await http.get("/v1/tenants/\(id)/settings", responseType: TenantSettings.self)
     }
 
     /// Update tenant settings.
     public func updateSettings(id: String, settings: TenantSettings) async throws -> TenantSettings {
-        return try await http.put("/v1/admin/tenants/\(id)/settings", body: settings, responseType: TenantSettings.self)
+        return try await http.put("/v1/tenants/\(id)/settings", body: settings, responseType: TenantSettings.self)
     }
 
     // MARK: - Statistics
 
     /// Get tenant statistics.
     public func getStats(id: String) async throws -> TenantStats {
-        return try await http.get("/v1/admin/tenants/\(id)/stats", responseType: TenantStats.self)
+        return try await http.get("/v1/tenants/\(id)/stats", responseType: TenantStats.self)
     }
 
     // MARK: - User Management
@@ -97,18 +97,18 @@ public final class TenantClient: Sendable {
     /// List tenant users.
     public func listUsers(tenantId: String, limit: Int = 50, offset: Int = 0) async throws -> Page<User> {
         let query = ["limit": String(limit), "offset": String(offset)]
-        return try await http.get("/v1/admin/tenants/\(tenantId)/users", query: query, responseType: Page<User>.self)
+        return try await http.get("/v1/tenants/\(tenantId)/users", query: query, responseType: Page<User>.self)
     }
 
     /// Add user to tenant.
     public func addUser(tenantId: String, userId: String) async throws {
         let request = AddUserToTenantRequest(userId: userId)
-        try await http.post("/v1/admin/tenants/\(tenantId)/users", body: request)
+        try await http.post("/v1/tenants/\(tenantId)/users", body: request)
     }
 
     /// Remove user from tenant.
     public func removeUser(tenantId: String, userId: String) async throws {
-        try await http.delete("/v1/admin/tenants/\(tenantId)/users/\(userId)")
+        try await http.delete("/v1/tenants/\(tenantId)/users/\(userId)")
     }
 }
 
