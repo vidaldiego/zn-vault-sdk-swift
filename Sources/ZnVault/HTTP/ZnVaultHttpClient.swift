@@ -44,15 +44,23 @@ public actor ZnVaultHttpClient {
             let string = try container.decode(String.self)
 
             // Try ISO8601 with fractional seconds
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: string) {
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = isoFormatter.date(from: string) {
                 return date
             }
 
             // Try without fractional seconds
-            formatter.formatOptions = [.withInternetDateTime]
-            if let date = formatter.date(from: string) {
+            isoFormatter.formatOptions = [.withInternetDateTime]
+            if let date = isoFormatter.date(from: string) {
+                return date
+            }
+
+            // Try SQLite datetime format: "YYYY-MM-DD HH:MM:SS"
+            let sqliteFormatter = DateFormatter()
+            sqliteFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            sqliteFormatter.timeZone = TimeZone(identifier: "UTC")
+            if let date = sqliteFormatter.date(from: string) {
                 return date
             }
 
