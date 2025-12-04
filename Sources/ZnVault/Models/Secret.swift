@@ -125,17 +125,23 @@ public struct SecretFilter: Sendable {
 
 /// Historical version of a secret.
 public struct SecretVersion: Codable, Sendable, Identifiable {
-    public let id: String
-    public let secretId: String?
+    public let id: Int
+    public let tenant: String?
+    public let alias: String?
+    public let type: String?
     public let version: Int
+    public let tags: [String]?
     public let createdAt: Date?
     public let createdBy: String?
     public let checksum: String?
 
     enum CodingKeys: String, CodingKey {
         case id
-        case secretId = "secret_id"
+        case tenant
+        case alias
+        case type
         case version
+        case tags
         case createdAt = "created_at"
         case createdBy = "created_by"
         case checksum

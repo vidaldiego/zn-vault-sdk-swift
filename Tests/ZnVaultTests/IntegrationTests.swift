@@ -263,6 +263,45 @@ final class SecretsIntegrationTests: XCTestCase {
         print("✓ Rotated secret, version: \(created.version) -> \(rotated.version)")
     }
 
+    func testSecretVersionHistory() async throws {
+        let alias = TestConfig.uniqueAlias("history")
+
+        // Create a secret
+        let created = try await client.secrets.create(
+            alias: alias,
+            type: .opaque,
+            data: ["key": "v1"]
+        )
+
+        createdSecretIds.append(created.id)
+        XCTAssertEqual(created.version, 1)
+
+        // Update it to create v2
+        _ = try await client.secrets.update(
+            id: created.id,
+            data: ["key": "v2"]
+        )
+
+        // Update again to create v3
+        _ = try await client.secrets.update(
+            id: created.id,
+            data: ["key": "v3"]
+        )
+
+        // Get version history
+        let history = try await client.secrets.getHistory(id: created.id)
+
+        XCTAssertGreaterThanOrEqual(history.count, 2)
+        print("✓ Got \(history.count) versions in history")
+
+        // Verify history contains expected versions
+        let versions = history.map { $0.version }
+        XCTAssertTrue(versions.contains(1), "History should contain version 1")
+        XCTAssertTrue(versions.contains(2), "History should contain version 2")
+
+        print("  Versions: \(versions)")
+    }
+
     func testListSecrets() async throws {
         // Create some secrets
         for i in 0..<3 {

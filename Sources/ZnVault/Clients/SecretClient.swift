@@ -125,7 +125,8 @@ public final class SecretClient: Sendable {
 
     /// Get secret version history.
     public func getHistory(id: String) async throws -> [SecretVersion] {
-        return try await http.get("/v1/secrets/\(id)/history", responseType: [SecretVersion].self)
+        let response = try await http.get("/v1/secrets/\(id)/history", responseType: SecretHistoryResponse.self)
+        return response.history
     }
 
     /// Decrypt a specific version.
