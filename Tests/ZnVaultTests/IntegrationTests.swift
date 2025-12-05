@@ -79,6 +79,19 @@ final class AuthIntegrationTests: XCTestCase {
         print("✓ Logged in as regular user")
     }
 
+    func testLoginWithSeparateTenant() async throws {
+        // Test the convenience method with separate tenant parameter
+        let response = try await client.auth.login(
+            tenant: TestConfig.defaultTenant,
+            username: "zincuser",
+            password: TestConfig.Users.regularUserPassword
+        )
+
+        XCTAssertNotNil(response.accessToken)
+        XCTAssertNotNil(response.refreshToken)
+        print("✓ Logged in using tenant/username convenience method")
+    }
+
     func testLoginInvalidCredentials() async throws {
         do {
             _ = try await client.auth.login(

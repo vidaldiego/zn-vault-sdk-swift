@@ -13,6 +13,16 @@ public final class AuthClient: Sendable {
     // MARK: - Login/Logout
 
     /// Login with username and password.
+    ///
+    /// The username must include the tenant prefix in the format `tenant/username`
+    /// (e.g., "acme/admin"). This allows multiple tenants to have users with the
+    /// same username. Email addresses can also be used as username.
+    ///
+    /// - Parameters:
+    ///   - username: Username in format "tenant/username" or email
+    ///   - password: User password
+    ///   - totpCode: Optional TOTP code if 2FA is enabled
+    /// - Returns: Login response with tokens
     public func login(username: String, password: String, totpCode: String? = nil) async throws -> LoginResponse {
         let request = LoginRequest(username: username, password: password, totpCode: totpCode)
         let response = try await http.post("/auth/login", body: request, responseType: LoginResponse.self)
@@ -22,6 +32,21 @@ public final class AuthClient: Sendable {
         await http.setRefreshToken(response.refreshToken)
 
         return response
+    }
+
+    /// Login with tenant and username separately.
+    ///
+    /// Convenience method that formats the username as "tenant/username".
+    ///
+    /// - Parameters:
+    ///   - tenant: Tenant identifier (e.g., "acme")
+    ///   - username: Username within the tenant (e.g., "admin")
+    ///   - password: User password
+    ///   - totpCode: Optional TOTP code if 2FA is enabled
+    /// - Returns: Login response with tokens
+    public func login(tenant: String, username: String, password: String, totpCode: String? = nil) async throws -> LoginResponse {
+        let fullUsername = "\(tenant)/\(username)"
+        return try await login(username: fullUsername, password: password, totpCode: totpCode)
     }
 
     /// Login with request object.

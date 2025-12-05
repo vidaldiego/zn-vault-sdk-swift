@@ -9,17 +9,19 @@ enum TestConfig {
     static let baseURL = "https://localhost:8443"
 
     // Test users
+    // Note: Username must be in format "tenant/username" for non-superadmin users.
+    // Superadmin can omit tenant prefix. Email can also be used as username.
     enum Users {
-        // Superadmin - full access
+        // Superadmin - full access (no tenant prefix required)
         static let superadminUsername = "admin"
         static let superadminPassword = "Admin123456#"
 
-        // Tenant admin - manages tenant resources
-        static let tenantAdminUsername = "zincadmin"
+        // Tenant admin - manages tenant resources (requires tenant/username format)
+        static let tenantAdminUsername = "zincapp/zincadmin"
         static let tenantAdminPassword = "Admin123456#"
 
-        // Regular user - limited access
-        static let regularUserUsername = "zincuser"
+        // Regular user - limited access (requires tenant/username format)
+        static let regularUserUsername = "zincapp/zincuser"
         static let regularUserPassword = "Admin123456#"
     }
 
