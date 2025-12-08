@@ -119,6 +119,16 @@ public actor ZnVaultHttpClient {
         return try await execute(request, responseType: responseType)
     }
 
+    /// Perform GET request without authentication.
+    public func getPublic<T: Decodable>(
+        _ path: String,
+        query: [String: String]? = nil,
+        responseType: T.Type
+    ) async throws -> T {
+        let request = try buildRequest(path: path, method: "GET", query: query, requireAuth: false)
+        return try await execute(request, responseType: responseType)
+    }
+
     /// Perform POST request.
     public func post<T: Encodable, R: Decodable>(
         _ path: String,
@@ -195,7 +205,8 @@ public actor ZnVaultHttpClient {
     private func buildRequest(
         path: String,
         method: String,
-        query: [String: String]? = nil
+        query: [String: String]? = nil,
+        requireAuth: Bool = true
     ) throws -> URLRequest {
         var urlComponents = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: true)
 
@@ -210,11 +221,13 @@ public actor ZnVaultHttpClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
 
-        // Add authentication header
-        if let token = accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else if let key = apiKey {
-            request.setValue(key, forHTTPHeaderField: "X-API-Key")
+        // Add authentication header if required
+        if requireAuth {
+            if let token = accessToken {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            } else if let key = apiKey {
+                request.setValue(key, forHTTPHeaderField: "X-API-Key")
+            }
         }
 
         return request

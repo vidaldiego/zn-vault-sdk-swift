@@ -150,13 +150,13 @@ final class ZnVaultTests: XCTestCase {
         let filter = SecretFilter(
             type: .credential,
             tags: ["test"],
-            limit: 100
+            pageSize: 100
         )
 
         XCTAssertEqual(filter.type, SecretType.credential)
         XCTAssertEqual(filter.tags, ["test"])
-        XCTAssertEqual(filter.limit, 100)
-        XCTAssertEqual(filter.offset, 0)
+        XCTAssertEqual(filter.pageSize, 100)
+        XCTAssertEqual(filter.page, 1)
     }
 
     func testKeyFilter() {
