@@ -141,6 +141,19 @@ public actor ZnVaultHttpClient {
         return try await execute(request, responseType: responseType)
     }
 
+    /// Perform POST request with query parameters.
+    public func post<T: Encodable, R: Decodable>(
+        _ path: String,
+        body: T,
+        query: [String: String]?,
+        responseType: R.Type
+    ) async throws -> R {
+        var request = try buildRequest(path: path, method: "POST", query: query)
+        request.httpBody = try encoder.encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return try await execute(request, responseType: responseType)
+    }
+
     /// Perform POST request without body.
     public func post<R: Decodable>(
         _ path: String,
@@ -185,9 +198,28 @@ public actor ZnVaultHttpClient {
         return try await execute(request, responseType: responseType)
     }
 
+    /// Perform PATCH request with query parameters.
+    public func patch<T: Encodable, R: Decodable>(
+        _ path: String,
+        body: T,
+        query: [String: String]?,
+        responseType: R.Type
+    ) async throws -> R {
+        var request = try buildRequest(path: path, method: "PATCH", query: query)
+        request.httpBody = try encoder.encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return try await execute(request, responseType: responseType)
+    }
+
     /// Perform DELETE request.
     public func delete(_ path: String) async throws {
         let request = try buildRequest(path: path, method: "DELETE")
+        try await executeVoid(request)
+    }
+
+    /// Perform DELETE request with query parameters.
+    public func delete(_ path: String, query: [String: String]?) async throws {
+        let request = try buildRequest(path: path, method: "DELETE", query: query)
         try await executeVoid(request)
     }
 

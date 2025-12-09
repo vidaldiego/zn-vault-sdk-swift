@@ -38,6 +38,9 @@ public final class ZnVaultClient: Sendable {
     /// KMS operations.
     public let kms: KmsClient
 
+    /// Certificate lifecycle management operations.
+    public let certificates: CertificateClient
+
     /// User management operations.
     public let users: UserClient
 
@@ -62,6 +65,7 @@ public final class ZnVaultClient: Sendable {
         self.auth = AuthClient(http: http)
         self.secrets = SecretClient(http: http)
         self.kms = KmsClient(http: http)
+        self.certificates = CertificateClient(http: http)
         self.users = UserClient(http: http)
         self.tenants = TenantClient(http: http)
         self.roles = RoleClient(http: http)
