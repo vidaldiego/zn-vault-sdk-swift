@@ -4,29 +4,46 @@ import Foundation
 @testable import ZnVault
 
 /// Test configuration for integration tests.
+/// Uses environment variables if set, otherwise falls back to defaults.
 enum TestConfig {
-    // Test server
-    static let baseURL = "https://localhost:8443"
+    // Test server - can be overridden with ZNVAULT_BASE_URL env var
+    static var baseURL: String {
+        ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] ?? "https://localhost:8443"
+    }
 
-    // Test users
+    // Test users - can be overridden with ZNVAULT_USERNAME and ZNVAULT_PASSWORD env vars
     // Note: Username must be in format "tenant/username" for non-superadmin users.
     // Superadmin can omit tenant prefix. Email can also be used as username.
     enum Users {
         // Superadmin - full access (no tenant prefix required)
-        static let superadminUsername = "admin"
-        static let superadminPassword = "Admin123456#"
+        static var superadminUsername: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_USERNAME"] ?? "admin"
+        }
+        static var superadminPassword: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_PASSWORD"] ?? "Admin123456#"
+        }
 
         // Tenant admin - manages tenant resources (requires tenant/username format)
-        static let tenantAdminUsername = "zincapp/zincadmin"
-        static let tenantAdminPassword = "Admin123456#"
+        static var tenantAdminUsername: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_TENANT_ADMIN_USERNAME"] ?? "zincapp/zincadmin"
+        }
+        static var tenantAdminPassword: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_TENANT_ADMIN_PASSWORD"] ?? "Admin123456#"
+        }
 
         // Regular user - limited access (requires tenant/username format)
-        static let regularUserUsername = "zincapp/zincuser"
-        static let regularUserPassword = "Admin123456#"
+        static var regularUserUsername: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_REGULAR_USER_USERNAME"] ?? "zincapp/zincuser"
+        }
+        static var regularUserPassword: String {
+            ProcessInfo.processInfo.environment["ZNVAULT_REGULAR_USER_PASSWORD"] ?? "Admin123456#"
+        }
     }
 
     // Default tenant for tests
-    static let defaultTenant = "zincapp"
+    static var defaultTenant: String {
+        ProcessInfo.processInfo.environment["ZNVAULT_DEFAULT_TENANT"] ?? "zincapp"
+    }
 
     /// Create a client for testing (insecure TLS for localhost).
     static func createTestClient() throws -> ZnVaultClient {
