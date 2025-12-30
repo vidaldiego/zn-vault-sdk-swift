@@ -414,6 +414,61 @@ final class ZnVaultTests: XCTestCase {
         XCTAssertNotNil(user.createdAt)
     }
 
+    func testDateDecodingWithPostgreSQLFractionalSeconds() throws {
+        // Test with PostgreSQL datetime format with 5-digit fractional seconds
+        // This is the exact format the server returns: "2025-12-22 19:36:44.72083"
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-22 19:36:44.72083"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertNotNil(user.createdAt)
+    }
+
+    func testDateDecodingWithPostgreSQLMilliseconds() throws {
+        // Test with PostgreSQL datetime format with 3-digit fractional seconds
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-22 19:36:44.720"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertNotNil(user.createdAt)
+    }
+
+    func testDateDecodingWithPostgreSQLMicroseconds() throws {
+        // Test with PostgreSQL datetime format with 6-digit fractional seconds (microseconds)
+        let json = """
+        {
+            "id": "user-123",
+            "username": "testuser",
+            "totp_enabled": false,
+            "created_at": "2025-12-22 19:36:44.720830"
+        }
+        """
+
+        let decoder = makeApiDecoder()
+        let user = try decoder.decode(User.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(user.id, "user-123")
+        XCTAssertNotNil(user.createdAt)
+    }
+
     func testMeResponseDecoding() throws {
         // Test the actual /auth/me response format from the API
         let json = """
@@ -457,11 +512,30 @@ final class ZnVaultTests: XCTestCase {
                 return date
             }
 
-            // Try SQLite datetime format: "YYYY-MM-DD HH:MM:SS"
-            let sqliteFormatter = DateFormatter()
-            sqliteFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            sqliteFormatter.timeZone = TimeZone(identifier: "UTC")
-            if let date = sqliteFormatter.date(from: string) {
+            // Try PostgreSQL/SQLite datetime format with fractional seconds: "YYYY-MM-DD HH:MM:SS.SSSSSS"
+            let pgFormatter = DateFormatter()
+            pgFormatter.timeZone = TimeZone(identifier: "UTC")
+
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSSS"
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try with fewer fractional digits (5)
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSS"
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try with milliseconds (3 digits)
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try SQLite datetime format without fractional seconds: "YYYY-MM-DD HH:MM:SS"
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            if let date = pgFormatter.date(from: string) {
                 return date
             }
 

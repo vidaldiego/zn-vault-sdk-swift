@@ -56,11 +56,29 @@ public actor ZnVaultHttpClient {
                 return date
             }
 
-            // Try SQLite datetime format: "YYYY-MM-DD HH:MM:SS"
-            let sqliteFormatter = DateFormatter()
-            sqliteFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            sqliteFormatter.timeZone = TimeZone(identifier: "UTC")
-            if let date = sqliteFormatter.date(from: string) {
+            // Try PostgreSQL/SQLite datetime format with fractional seconds: "YYYY-MM-DD HH:MM:SS.SSSSSS"
+            let pgFormatter = DateFormatter()
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSSS"
+            pgFormatter.timeZone = TimeZone(identifier: "UTC")
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try with fewer fractional digits (5)
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSSS"
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try with milliseconds (3 digits)
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+            if let date = pgFormatter.date(from: string) {
+                return date
+            }
+
+            // Try SQLite datetime format without fractional seconds: "YYYY-MM-DD HH:MM:SS"
+            pgFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            if let date = pgFormatter.date(from: string) {
                 return date
             }
 
