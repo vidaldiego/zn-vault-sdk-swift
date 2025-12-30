@@ -128,8 +128,8 @@ public final class SecretClient: Sendable {
         if let expiringBefore = filter.expiringBefore {
             query["expiringBefore"] = ISO8601DateFormatter().string(from: expiringBefore)
         }
-        if let aliasPrefix = filter.aliasPrefix {
-            query["aliasPrefix"] = aliasPrefix
+        if let aliasPattern = filter.aliasPattern {
+            query["aliasPrefix"] = aliasPattern  // Server uses aliasPrefix parameter
         }
         if let tags = filter.tags, !tags.isEmpty {
             query["tags"] = tags.joined(separator: ",")
@@ -426,7 +426,75 @@ public final class SecretClient: Sendable {
         pageSize: Int = 100
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
-            aliasPrefix: aliasPrefix,
+            aliasPattern: aliasPrefix,
+            page: page,
+            pageSize: pageSize
+        ))
+    }
+
+    /// List secrets matching a wildcard pattern.
+    ///
+    /// Use `*` as a wildcard to match any characters:
+    /// - `web/*` matches all under "web/"
+    /// - `*/env/*` matches paths containing "/env/"
+    /// - `db-*/prod*` matches "db-mysql/production", "db-postgres/prod-us"
+    /// - `*secret*` matches any alias containing "secret"
+    ///
+    /// Examples:
+    /// ```swift
+    /// // Find all production secrets
+    /// let secrets = try await client.secrets.listByPattern("*/production/*")
+    ///
+    /// // Find all env configs
+    /// let secrets = try await client.secrets.listByPattern("*/env/*")
+    ///
+    /// // Find secrets matching SQL-like pattern
+    /// let secrets = try await client.secrets.listByPattern("*/env/secret_*")
+    /// ```
+    public func listByPattern(
+        _ pattern: String,
+        type: SecretType? = nil,
+        subType: SecretSubType? = nil,
+        page: Int = 1,
+        pageSize: Int = 100
+    ) async throws -> [Secret] {
+        return try await list(filter: SecretFilter(
+            type: type,
+            subType: subType,
+            aliasPattern: pattern,
+            page: page,
+            pageSize: pageSize
+        ))
+    }
+
+    /// Search secrets by pattern with multiple filters.
+    ///
+    /// Convenience method combining pattern matching with other filters.
+    ///
+    /// Example:
+    /// ```swift
+    /// // Find expiring certificates matching pattern
+    /// let certs = try await client.secrets.search(
+    ///     pattern: "*/ssl/*",
+    ///     subType: .certificate,
+    ///     expiringBefore: Date().addingTimeInterval(86400 * 30)
+    /// )
+    /// ```
+    public func search(
+        pattern: String? = nil,
+        type: SecretType? = nil,
+        subType: SecretSubType? = nil,
+        tags: [String]? = nil,
+        expiringBefore: Date? = nil,
+        page: Int = 1,
+        pageSize: Int = 100
+    ) async throws -> [Secret] {
+        return try await list(filter: SecretFilter(
+            type: type,
+            subType: subType,
+            expiringBefore: expiringBefore,
+            aliasPattern: pattern,
+            tags: tags,
             page: page,
             pageSize: pageSize
         ))

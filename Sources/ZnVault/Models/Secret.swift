@@ -302,22 +302,46 @@ public struct UpdateSecretMetadataRequest: Codable, Sendable {
 }
 
 /// Filter for listing secrets.
+///
+/// **Wildcard Pattern Matching:**
+/// Use `*` as a wildcard in `aliasPattern` to match any characters:
+/// - `web/*` matches all secrets under "web/" (e.g., "web/prod/api", "web/staging/db")
+/// - `*/env/*` matches paths containing "/env/" anywhere
+/// - `db-*/prod*` matches "db-mysql/production", "db-postgres/prod-us"
+/// - `*secret*` matches any alias containing "secret"
+///
+/// Examples:
+/// ```swift
+/// // Find all production secrets
+/// let filter = SecretFilter(aliasPattern: "*/production/*")
+///
+/// // Find all database credentials
+/// let filter = SecretFilter(aliasPattern: "*/db-*", subType: .password)
+///
+/// // Find expiring certificates
+/// let filter = SecretFilter(subType: .certificate, expiringBefore: Date().addingTimeInterval(86400 * 30))
+/// ```
 public struct SecretFilter: Sendable {
     public let type: SecretType?
     public let subType: SecretSubType?
     public let fileMime: String?
     public let expiringBefore: Date?
-    public let aliasPrefix: String?
+    /// Alias pattern with wildcard support. Use `*` to match any characters.
+    /// Examples: `web/*`, `*/env/*`, `db-*/prod*`
+    public let aliasPattern: String?
     public let tags: [String]?
     public let page: Int
     public let pageSize: Int
+
+    /// Backward compatibility alias for aliasPattern
+    public var aliasPrefix: String? { aliasPattern }
 
     public init(
         type: SecretType? = nil,
         subType: SecretSubType? = nil,
         fileMime: String? = nil,
         expiringBefore: Date? = nil,
-        aliasPrefix: String? = nil,
+        aliasPattern: String? = nil,
         tags: [String]? = nil,
         page: Int = 1,
         pageSize: Int = 100
@@ -326,7 +350,28 @@ public struct SecretFilter: Sendable {
         self.subType = subType
         self.fileMime = fileMime
         self.expiringBefore = expiringBefore
-        self.aliasPrefix = aliasPrefix
+        self.aliasPattern = aliasPattern
+        self.tags = tags
+        self.page = page
+        self.pageSize = pageSize
+    }
+
+    /// Backward compatible initializer with aliasPrefix parameter name
+    public init(
+        type: SecretType? = nil,
+        subType: SecretSubType? = nil,
+        fileMime: String? = nil,
+        expiringBefore: Date? = nil,
+        aliasPrefix: String?,
+        tags: [String]? = nil,
+        page: Int = 1,
+        pageSize: Int = 100
+    ) {
+        self.type = type
+        self.subType = subType
+        self.fileMime = fileMime
+        self.expiringBefore = expiringBefore
+        self.aliasPattern = aliasPrefix
         self.tags = tags
         self.page = page
         self.pageSize = pageSize

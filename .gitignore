@@ -29,3 +29,4 @@ Thumbs.db
 *.ipa
 *.dSYM.zip
 *.dSYM
+.env

@@ -159,6 +159,31 @@ final class ZnVaultTests: XCTestCase {
         XCTAssertEqual(filter.page, 1)
     }
 
+    func testSecretFilterWithPattern() {
+        // Test wildcard pattern matching
+        let filter = SecretFilter(
+            aliasPattern: "*/env/secret_*",
+            page: 1,
+            pageSize: 50
+        )
+
+        XCTAssertEqual(filter.aliasPattern, "*/env/secret_*")
+        XCTAssertEqual(filter.aliasPrefix, "*/env/secret_*")  // Backward compat
+        XCTAssertEqual(filter.pageSize, 50)
+    }
+
+    func testSecretFilterBackwardCompatibility() {
+        // Test backward compatibility with aliasPrefix parameter
+        let filter = SecretFilter(
+            aliasPrefix: "web/*",
+            page: 1,
+            pageSize: 100
+        )
+
+        XCTAssertEqual(filter.aliasPattern, "web/*")
+        XCTAssertEqual(filter.aliasPrefix, "web/*")
+    }
+
     func testKeyFilter() {
         let filter = KeyFilter(
             tenant: "test-tenant",
