@@ -15,6 +15,7 @@ A type-safe, idiomatic Swift client library for ZN-Vault secrets management.
 - Automatic token management
 - Self-signed certificate support for development
 - AsyncStream support for paginated results
+- Wildcard pattern matching for secret queries
 
 ## Requirements
 
@@ -29,7 +30,7 @@ Add the following to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/vidaldiego/zn-vault-sdk-swift.git", from: "1.0.0")
+    .package(url: "https://github.com/vidaldiego/zn-vault-sdk-swift.git", from: "1.5.0")
 ]
 ```
 
@@ -166,6 +167,56 @@ let oldVersion = try await client.secrets.decryptVersion(id: secret.id, version:
 // Delete secret
 try await client.secrets.delete(id: secret.id)
 ```
+
+### Pattern Matching & Search
+
+Use wildcard patterns with `*` to query secrets by path:
+
+```swift
+// Find all secrets under a path
+let webSecrets = try await client.secrets.listByPattern("web/*")
+
+// Find secrets containing "/env/" anywhere in the path
+let envSecrets = try await client.secrets.listByPattern("*/env/*")
+
+// SQL-like pattern matching
+let dbSecrets = try await client.secrets.listByPattern("*/env/secret_*")
+
+// Match multiple path segments
+let prodDb = try await client.secrets.listByPattern("db-*/prod*")
+// Matches: db-mysql/production, db-postgres/prod-us, etc.
+
+// Combine pattern with type filter
+let credentials = try await client.secrets.listByPattern(
+    "*/production/*",
+    type: .credential
+)
+
+// Advanced search with multiple filters
+let expiringCerts = try await client.secrets.search(
+    pattern: "*/ssl/*",
+    subType: .certificate,
+    expiringBefore: Date().addingTimeInterval(86400 * 30)  // 30 days
+)
+
+// Using SecretFilter directly
+let filter = SecretFilter(
+    aliasPattern: "*/env/secret_*",
+    type: .credential,
+    tags: ["production"]
+)
+let secrets = try await client.secrets.list(filter: filter)
+```
+
+**Pattern Examples:**
+
+| Pattern | Matches |
+|---------|---------|
+| `web/*` | `web/api`, `web/frontend/config` |
+| `*/env/*` | `app/env/vars`, `service/env/config` |
+| `db-*/prod*` | `db-mysql/production`, `db-postgres/prod-us` |
+| `*secret*` | `my-secret`, `api/secret/key`, `secret-config` |
+| `*/production/db-*` | `app/production/db-main`, `api/production/db-replica` |
 
 ### File Storage
 
