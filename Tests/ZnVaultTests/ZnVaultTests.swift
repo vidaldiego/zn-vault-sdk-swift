@@ -300,23 +300,40 @@ final class ZnVaultTests: XCTestCase {
     func testCreateApiKeyRequest() throws {
         let request = CreateApiKeyRequest(
             name: "test-api-key",
-            expiresIn: "90d",
-            permissions: ["secret:read"]
+            permissions: ["secret:read:metadata", "secret:read:value"],
+            expiresInDays: 90
         )
 
         XCTAssertEqual(request.name, "test-api-key")
-        XCTAssertEqual(request.expiresIn, "90d")
-        XCTAssertEqual(request.permissions, ["secret:read"])
+        XCTAssertEqual(request.expiresInDays, 90)
+        XCTAssertEqual(request.permissions, ["secret:read:metadata", "secret:read:value"])
+    }
+
+    func testCreateApiKeyRequestWithConditions() throws {
+        let conditions = ApiKeyConditions(
+            ip: ["10.0.0.0/8"],
+            methods: ["GET"]
+        )
+
+        let request = CreateApiKeyRequest(
+            name: "restricted-key",
+            permissions: ["secret:read:metadata"],
+            expiresInDays: 30,
+            conditions: conditions
+        )
+
+        XCTAssertEqual(request.name, "restricted-key")
+        XCTAssertEqual(request.permissions, ["secret:read:metadata"])
+        XCTAssertNotNil(request.conditions)
+        XCTAssertEqual(request.conditions?.ip, ["10.0.0.0/8"])
     }
 
     func testCreateApiKeyRequestEncoding() throws {
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
 
         let request = CreateApiKeyRequest(
             name: "my-service-key",
-            expiresIn: "30d",
-            permissions: nil
+            permissions: ["secret:read:metadata"]
         )
 
         let data = try encoder.encode(request)
@@ -324,8 +341,7 @@ final class ZnVaultTests: XCTestCase {
 
         XCTAssertTrue(json.contains("\"name\""))
         XCTAssertTrue(json.contains("\"my-service-key\""))
-        XCTAssertTrue(json.contains("\"expires_in\""))
-        XCTAssertTrue(json.contains("\"30d\""))
+        XCTAssertTrue(json.contains("\"permissions\""))
     }
 
     func testApiKeyDecoding() throws {

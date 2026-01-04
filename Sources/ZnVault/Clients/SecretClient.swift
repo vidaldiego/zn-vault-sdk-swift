@@ -23,6 +23,7 @@ public final class SecretClient: Sendable {
     ///   - ttlUntil: Optional user-defined expiration date
     ///   - tags: Optional tags for categorization
     ///   - contentType: Optional MIME type
+    ///   - tenant: Optional tenant (required for superadmin)
     public func create(
         alias: String,
         type: SecretType,
@@ -32,7 +33,8 @@ public final class SecretClient: Sendable {
         expiresAt: Date? = nil,
         ttlUntil: Date? = nil,
         tags: [String]? = nil,
-        contentType: String? = nil
+        contentType: String? = nil,
+        tenant: String? = nil
     ) async throws -> Secret {
         let request = CreateSecretRequest(
             alias: alias,
@@ -43,7 +45,8 @@ public final class SecretClient: Sendable {
             expiresAt: expiresAt,
             ttlUntil: ttlUntil,
             tags: tags,
-            contentType: contentType
+            contentType: contentType,
+            tenant: tenant
         )
         return try await http.post("/v1/secrets", body: request, responseType: Secret.self)
     }

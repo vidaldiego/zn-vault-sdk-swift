@@ -144,9 +144,40 @@ public final class AuthClient: Sendable {
     // MARK: - API Keys
 
     /// Create an API key.
-    public func createApiKey(name: String, expiresIn: String? = nil, permissions: [String]? = nil) async throws -> CreateApiKeyResponse {
-        let request = CreateApiKeyRequest(name: name, expiresIn: expiresIn, permissions: permissions)
-        return try await http.post("/auth/api-keys", body: request, responseType: CreateApiKeyResponse.self)
+    ///
+    /// - Parameters:
+    ///   - name: Name for the API key
+    ///   - permissions: Required list of permissions for the key
+    ///   - expiresInDays: Optional expiration in days
+    ///   - description: Optional description
+    ///   - ipAllowlist: Optional list of allowed IPs/CIDRs
+    ///   - conditions: Optional inline ABAC conditions
+    ///   - tenantId: Required for superadmin creating tenant-scoped keys
+    /// - Returns: The created API key with key value (only shown once!)
+    public func createApiKey(
+        name: String,
+        permissions: [String],
+        expiresInDays: Int? = nil,
+        description: String? = nil,
+        ipAllowlist: [String]? = nil,
+        conditions: ApiKeyConditions? = nil,
+        tenantId: String? = nil
+    ) async throws -> CreateApiKeyResponse {
+        let request = CreateApiKeyRequest(
+            name: name,
+            permissions: permissions,
+            expiresInDays: expiresInDays,
+            description: description,
+            ipAllowlist: ipAllowlist,
+            conditions: conditions
+        )
+
+        // Tenant ID is passed as query parameter
+        let path = tenantId != nil
+            ? "/auth/api-keys?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
+            : "/auth/api-keys"
+
+        return try await http.post(path, body: request, responseType: CreateApiKeyResponse.self)
     }
 
     /// List API keys.

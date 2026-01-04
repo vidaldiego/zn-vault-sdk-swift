@@ -2,6 +2,22 @@
 
 import Foundation
 
+/// Response type for KMS key list endpoint.
+/// The server returns { keys: [...], truncated: bool } instead of Page format.
+private struct KmsKeyListResponse: Codable, Sendable {
+    let keys: [KmsKey]
+    let truncated: Bool
+
+    /// Convert to Page for consistent API.
+    func toPage() -> Page<KmsKey> {
+        return Page(
+            items: keys,
+            total: nil,
+            nextMarker: truncated ? "more" : nil
+        )
+    }
+}
+
 /// Client for KMS (Key Management Service) operations.
 public final class KmsClient: Sendable {
     private let http: ZnVaultHttpClient
@@ -58,7 +74,9 @@ public final class KmsClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        return try await http.get("/v1/kms/keys", query: query, responseType: Page<KmsKey>.self)
+        // KMS endpoint returns { keys: [...], truncated: bool } instead of Page format
+        let response = try await http.get("/v1/kms/keys", query: query, responseType: KmsKeyListResponse.self)
+        return response.toPage()
     }
 
     /// List KMS keys for a tenant (convenience method).
@@ -228,12 +246,6 @@ public struct EncryptRequest: Codable, Sendable {
     public let plaintext: String
     public let context: [String: String]
 
-    enum CodingKeys: String, CodingKey {
-        case keyId = "key_id"
-        case plaintext
-        case context
-    }
-
     public init(keyId: String, plaintext: String, context: [String: String] = [:]) {
         self.keyId = keyId
         self.plaintext = plaintext
@@ -246,12 +258,6 @@ public struct DecryptRequestBody: Codable, Sendable {
     public let keyId: String
     public let ciphertext: String
     public let context: [String: String]
-
-    enum CodingKeys: String, CodingKey {
-        case keyId = "key_id"
-        case ciphertext
-        case context
-    }
 
     public init(keyId: String, ciphertext: String, context: [String: String] = [:]) {
         self.keyId = keyId

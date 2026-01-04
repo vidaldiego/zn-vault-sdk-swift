@@ -217,9 +217,10 @@ public struct CreateSecretRequest: Codable, Sendable {
     public let ttlUntil: Date?
     public let tags: [String]?
     public let contentType: String?
+    public let tenant: String?  // Required for superadmin
 
     enum CodingKeys: String, CodingKey {
-        case alias, type, data, tags
+        case alias, type, data, tags, tenant
         case subType
         case fileName
         case expiresAt
@@ -236,7 +237,8 @@ public struct CreateSecretRequest: Codable, Sendable {
         expiresAt: Date? = nil,
         ttlUntil: Date? = nil,
         tags: [String]? = nil,
-        contentType: String? = nil
+        contentType: String? = nil,
+        tenant: String? = nil
     ) {
         self.alias = alias
         self.type = type
@@ -247,6 +249,7 @@ public struct CreateSecretRequest: Codable, Sendable {
         self.ttlUntil = ttlUntil
         self.tags = tags
         self.contentType = contentType
+        self.tenant = tenant
     }
 }
 
