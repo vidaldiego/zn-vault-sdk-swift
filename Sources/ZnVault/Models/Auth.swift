@@ -191,3 +191,165 @@ public struct TotpSetupResponse: Codable, Sendable {
         case otpauthUrl = "otpauth_url"
     }
 }
+
+// MARK: - Managed API Keys
+
+/// Rotation mode for managed API keys.
+///
+/// - `scheduled`: Key rotates at fixed intervals (e.g., every 24 hours)
+/// - `onUse`: Key rotates after being used (TTL resets on each use)
+/// - `onBind`: Key rotates each time bind is called
+public enum RotationMode: String, Codable, Sendable {
+    case scheduled = "scheduled"
+    case onUse = "on-use"
+    case onBind = "on-bind"
+}
+
+/// Managed API key with auto-rotation configuration.
+///
+/// Managed keys automatically rotate based on the configured mode,
+/// providing seamless credential rotation for services and agents.
+public struct ManagedApiKey: Codable, Sendable, Identifiable {
+    public let id: String
+    public let name: String
+    public let tenantId: String
+    public let permissions: [String]
+    public let rotationMode: RotationMode
+    public let gracePeriod: String
+    public let enabled: Bool
+    public let createdAt: Date?
+    public let description: String?
+    public let rotationInterval: String?
+    public let lastRotatedAt: Date?
+    public let nextRotationAt: Date?
+    public let createdBy: String?
+    public let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, tenantId, permissions, rotationMode, gracePeriod, enabled
+        case createdAt, description, rotationInterval, lastRotatedAt
+        case nextRotationAt, createdBy, updatedAt
+    }
+}
+
+/// Response from binding to a managed API key.
+///
+/// This is what agents use to get the current key value and rotation metadata.
+public struct ManagedKeyBindResponse: Codable, Sendable {
+    /// The API key ID
+    public let id: String
+    /// The current API key value - use this for authentication
+    public let key: String
+    /// Key prefix for identification
+    public let prefix: String
+    /// Managed key name
+    public let name: String
+    /// When this key expires
+    public let expiresAt: Date?
+    /// Grace period duration
+    public let gracePeriod: String
+    /// Rotation mode
+    public let rotationMode: RotationMode
+    /// Permissions on the key
+    public let permissions: [String]
+    /// When the next rotation will occur (helps SDK know when to re-bind)
+    public let nextRotationAt: Date?
+    /// When the grace period expires (after this, old key stops working)
+    public let graceExpiresAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, key, prefix, name, expiresAt, gracePeriod
+        case rotationMode, permissions, nextRotationAt, graceExpiresAt
+    }
+}
+
+/// Response from rotating a managed API key.
+public struct ManagedKeyRotateResponse: Codable, Sendable {
+    /// The new API key value
+    public let key: String
+    /// Managed key metadata
+    public let apiKey: ManagedApiKey
+    /// When the old key expires (grace period end)
+    public let graceExpiresAt: Date?
+    /// Optional message
+    public let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case key, apiKey, graceExpiresAt, message
+    }
+}
+
+/// Request to create a managed API key.
+public struct CreateManagedApiKeyRequest: Codable, Sendable {
+    public let name: String
+    public let permissions: [String]
+    public let rotationMode: RotationMode
+    public let rotationInterval: String?
+    public let gracePeriod: String?
+    public let description: String?
+    public let expiresInDays: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case name, permissions, rotationMode, rotationInterval
+        case gracePeriod, description, expiresInDays
+    }
+
+    public init(
+        name: String,
+        permissions: [String],
+        rotationMode: RotationMode,
+        rotationInterval: String? = nil,
+        gracePeriod: String? = nil,
+        description: String? = nil,
+        expiresInDays: Int? = nil
+    ) {
+        self.name = name
+        self.permissions = permissions
+        self.rotationMode = rotationMode
+        self.rotationInterval = rotationInterval
+        self.gracePeriod = gracePeriod
+        self.description = description
+        self.expiresInDays = expiresInDays
+    }
+}
+
+/// Response when creating a managed API key.
+public struct CreateManagedApiKeyResponse: Codable, Sendable {
+    public let apiKey: ManagedApiKey
+    public let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case apiKey, message
+    }
+}
+
+/// Response listing managed API keys.
+public struct ManagedApiKeyListResponse: Codable, Sendable {
+    public let keys: [ManagedApiKey]
+    public let total: Int
+
+    enum CodingKeys: String, CodingKey {
+        case keys, total
+    }
+}
+
+/// Request to update managed API key configuration.
+public struct UpdateManagedApiKeyConfigRequest: Codable, Sendable {
+    public let rotationInterval: String?
+    public let gracePeriod: String?
+    public let enabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case rotationInterval, gracePeriod, enabled
+    }
+
+    public init(
+        rotationInterval: String? = nil,
+        gracePeriod: String? = nil,
+        enabled: Bool? = nil
+    ) {
+        self.rotationInterval = rotationInterval
+        self.gracePeriod = gracePeriod
+        self.enabled = enabled
+    }
+}

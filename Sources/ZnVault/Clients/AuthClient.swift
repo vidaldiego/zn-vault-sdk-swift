@@ -220,6 +220,170 @@ public final class AuthClient: Sendable {
         return try await http.get("/auth/me", responseType: MeResponse.self)
     }
 
+    // MARK: - Managed API Keys
+
+    /// Create a managed API key with auto-rotation configuration.
+    ///
+    /// Managed keys automatically rotate based on the configured mode:
+    /// - `scheduled`: Rotates at fixed intervals (requires rotationInterval)
+    /// - `onUse`: Rotates after being used (TTL resets on each use)
+    /// - `onBind`: Rotates each time bind is called
+    ///
+    /// - Parameters:
+    ///   - name: Unique name for the managed key
+    ///   - permissions: List of permissions for the key
+    ///   - rotationMode: Rotation mode
+    ///   - rotationInterval: Interval for scheduled rotation (e.g., "24h", "7d")
+    ///   - gracePeriod: Grace period for smooth transitions (e.g., "5m")
+    ///   - description: Optional description
+    ///   - expiresInDays: Optional expiration in days
+    ///   - tenantId: Required for superadmin creating tenant-scoped keys
+    /// - Returns: The created managed key metadata (use bind to get the key value)
+    public func createManagedApiKey(
+        name: String,
+        permissions: [String],
+        rotationMode: RotationMode,
+        rotationInterval: String? = nil,
+        gracePeriod: String? = nil,
+        description: String? = nil,
+        expiresInDays: Int? = nil,
+        tenantId: String? = nil
+    ) async throws -> CreateManagedApiKeyResponse {
+        let request = CreateManagedApiKeyRequest(
+            name: name,
+            permissions: permissions,
+            rotationMode: rotationMode,
+            rotationInterval: rotationInterval,
+            gracePeriod: gracePeriod,
+            description: description,
+            expiresInDays: expiresInDays
+        )
+
+        let path = tenantId != nil
+            ? "/auth/api-keys/managed?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
+            : "/auth/api-keys/managed"
+
+        return try await http.post(path, body: request, responseType: CreateManagedApiKeyResponse.self)
+    }
+
+    /// List managed API keys.
+    ///
+    /// - Parameter tenantId: Optional tenant ID filter (for superadmin)
+    /// - Returns: List of managed keys
+    public func listManagedApiKeys(tenantId: String? = nil) async throws -> [ManagedApiKey] {
+        let path = tenantId != nil
+            ? "/auth/api-keys/managed?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
+            : "/auth/api-keys/managed"
+
+        let response = try await http.get(path, responseType: ManagedApiKeyListResponse.self)
+        return response.keys
+    }
+
+    /// Get a managed API key by name.
+    ///
+    /// - Parameters:
+    ///   - name: The managed key name
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: The managed key metadata
+    public func getManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedApiKey {
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        var path = "/auth/api-keys/managed/\(encodedName)"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        return try await http.get(path, responseType: ManagedApiKey.self)
+    }
+
+    /// Bind to a managed API key to get the current key value.
+    ///
+    /// This is the primary method for agents to obtain their API key.
+    /// The response includes rotation metadata to help determine when
+    /// to re-bind for a new key.
+    ///
+    /// Security: This endpoint requires the caller to already have a valid
+    /// API key (the current one, even during grace period). This prevents
+    /// unauthorized access to managed keys.
+    ///
+    /// - Parameters:
+    ///   - name: The managed key name
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: The current key value and rotation metadata
+    public func bindManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedKeyBindResponse {
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        var path = "/auth/api-keys/managed/\(encodedName)/bind"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        return try await http.post(path, responseType: ManagedKeyBindResponse.self)
+    }
+
+    /// Force rotate a managed API key.
+    ///
+    /// Creates a new key immediately, regardless of the rotation schedule.
+    /// The old key remains valid during the grace period.
+    ///
+    /// - Parameters:
+    ///   - name: The managed key name
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: The new key value and rotation info
+    public func rotateManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedKeyRotateResponse {
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        var path = "/auth/api-keys/managed/\(encodedName)/rotate"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        return try await http.post(path, responseType: ManagedKeyRotateResponse.self)
+    }
+
+    /// Update managed API key configuration.
+    ///
+    /// - Parameters:
+    ///   - name: The managed key name
+    ///   - rotationInterval: New rotation interval
+    ///   - gracePeriod: New grace period
+    ///   - enabled: Enable/disable the key
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: Updated managed key metadata
+    public func updateManagedApiKeyConfig(
+        name: String,
+        rotationInterval: String? = nil,
+        gracePeriod: String? = nil,
+        enabled: Bool? = nil,
+        tenantId: String? = nil
+    ) async throws -> ManagedApiKey {
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        var path = "/auth/api-keys/managed/\(encodedName)/config"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        let request = UpdateManagedApiKeyConfigRequest(
+            rotationInterval: rotationInterval,
+            gracePeriod: gracePeriod,
+            enabled: enabled
+        )
+
+        return try await http.patch(path, body: request, responseType: ManagedApiKey.self)
+    }
+
+    /// Delete a managed API key.
+    ///
+    /// - Parameters:
+    ///   - name: The managed key name
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    public func deleteManagedApiKey(name: String, tenantId: String? = nil) async throws {
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
+        var path = "/auth/api-keys/managed/\(encodedName)"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        try await http.delete(path)
+    }
+
 }
 
 // MARK: - Request/Response Types
