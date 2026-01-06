@@ -353,3 +353,117 @@ public struct UpdateManagedApiKeyConfigRequest: Codable, Sendable {
         self.enabled = enabled
     }
 }
+
+// MARK: - Registration Tokens (Agent Bootstrap)
+
+/// Status for registration tokens.
+public enum RegistrationTokenStatus: String, Codable, Sendable {
+    case active = "active"
+    case used = "used"
+    case expired = "expired"
+    case revoked = "revoked"
+}
+
+/// Registration token for agent bootstrapping.
+///
+/// Tokens are one-time use and allow agents to exchange them for a
+/// managed API key binding without prior authentication.
+public struct RegistrationToken: Codable, Sendable, Identifiable {
+    public let id: String
+    public let prefix: String
+    public let managedKeyName: String
+    public let tenantId: String
+    public let createdBy: String
+    public let status: RegistrationTokenStatus
+    public let createdAt: Date?
+    public let expiresAt: Date?
+    public let usedAt: Date?
+    public let usedByIp: String?
+    public let revokedAt: Date?
+    public let description: String?
+    public let createdByUsername: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, prefix, managedKeyName, tenantId, createdBy, status
+        case createdAt, expiresAt, usedAt, usedByIp, revokedAt
+        case description, createdByUsername
+    }
+}
+
+/// Request to create a registration token.
+public struct CreateRegistrationTokenRequest: Codable, Sendable {
+    /// Token expiration (e.g., "1h", "24h"). Min 1m, max 24h.
+    public let expiresIn: String?
+    /// Optional description for audit trail.
+    public let description: String?
+
+    enum CodingKeys: String, CodingKey {
+        case expiresIn, description
+    }
+
+    public init(expiresIn: String? = nil, description: String? = nil) {
+        self.expiresIn = expiresIn
+        self.description = description
+    }
+}
+
+/// Response from creating a registration token.
+///
+/// The full token value is only shown once - save it immediately!
+public struct CreateRegistrationTokenResponse: Codable, Sendable {
+    /// The full token value - shown only once!
+    public let token: String
+    /// Token prefix for identification (e.g., "zrt_abc1")
+    public let prefix: String
+    /// Token ID for management operations
+    public let id: String
+    /// The managed key this token is for
+    public let managedKeyName: String
+    /// Tenant ID
+    public let tenantId: String
+    /// When the token expires
+    public let expiresAt: Date?
+    /// Optional description
+    public let description: String?
+
+    enum CodingKeys: String, CodingKey {
+        case token, prefix, id, managedKeyName, tenantId, expiresAt, description
+    }
+}
+
+/// Response listing registration tokens.
+public struct RegistrationTokenListResponse: Codable, Sendable {
+    public let tokens: [RegistrationToken]
+
+    enum CodingKeys: String, CodingKey {
+        case tokens
+    }
+}
+
+/// Request to bootstrap an agent with a registration token.
+public struct BootstrapRequest: Codable, Sendable {
+    public let token: String
+
+    public init(token: String) {
+        self.token = token
+    }
+}
+
+/// Response from the agent bootstrap endpoint.
+public struct BootstrapResponse: Codable, Sendable {
+    /// The API key value
+    public let key: String
+    /// Managed key name
+    public let name: String
+    /// Permissions on the key
+    public let permissions: [String]
+    /// When the key expires
+    public let expiresAt: Date?
+    /// Notice about token consumption
+    public let notice: String?
+
+    enum CodingKeys: String, CodingKey {
+        case key, name, permissions, expiresAt
+        case notice = "_notice"
+    }
+}

@@ -384,6 +384,101 @@ public final class AuthClient: Sendable {
         try await http.delete(path)
     }
 
+    // MARK: - Registration Tokens (Agent Bootstrap)
+
+    /// Create a registration token for agent bootstrapping.
+    ///
+    /// Registration tokens are one-time use tokens that allow agents to
+    /// obtain their managed API key without prior authentication.
+    ///
+    /// - Parameters:
+    ///   - managedKeyName: The managed key to create a token for
+    ///   - expiresIn: Token expiration (e.g., "1h", "24h"). Min 1m, max 24h.
+    ///   - description: Optional description for audit trail
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: The created token (shown only once - save it immediately!)
+    public func createRegistrationToken(
+        managedKeyName: String,
+        expiresIn: String? = nil,
+        description: String? = nil,
+        tenantId: String? = nil
+    ) async throws -> CreateRegistrationTokenResponse {
+        let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
+        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        let request = CreateRegistrationTokenRequest(expiresIn: expiresIn, description: description)
+        return try await http.post(path, body: request, responseType: CreateRegistrationTokenResponse.self)
+    }
+
+    /// List registration tokens for a managed key.
+    ///
+    /// - Parameters:
+    ///   - managedKeyName: The managed key name
+    ///   - includeUsed: Include tokens that have been used
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    /// - Returns: List of registration tokens
+    public func listRegistrationTokens(
+        managedKeyName: String,
+        includeUsed: Bool = false,
+        tenantId: String? = nil
+    ) async throws -> [RegistrationToken] {
+        let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
+        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens"
+
+        var queryItems: [String] = []
+        if includeUsed {
+            queryItems.append("includeUsed=true")
+        }
+        if let tenantId = tenantId {
+            queryItems.append("tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)")
+        }
+        if !queryItems.isEmpty {
+            path += "?\(queryItems.joined(separator: "&"))"
+        }
+
+        let response = try await http.get(path, responseType: RegistrationTokenListResponse.self)
+        return response.tokens
+    }
+
+    /// Revoke a registration token.
+    ///
+    /// Prevents the token from being used for bootstrapping.
+    ///
+    /// - Parameters:
+    ///   - managedKeyName: The managed key name
+    ///   - tokenId: The token ID to revoke
+    ///   - tenantId: Optional tenant ID (for cross-tenant access)
+    public func revokeRegistrationToken(
+        managedKeyName: String,
+        tokenId: String,
+        tenantId: String? = nil
+    ) async throws {
+        let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
+        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens/\(tokenId)"
+        if let tenantId = tenantId {
+            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
+        }
+
+        try await http.delete(path)
+    }
+
+    /// Bootstrap an agent using a registration token.
+    ///
+    /// This is the unauthenticated endpoint used by agents to exchange a
+    /// one-time registration token for a managed API key binding.
+    ///
+    /// Note: This method does not require prior authentication.
+    ///
+    /// - Parameter token: The registration token (format: zrt_...)
+    /// - Returns: The API key binding response
+    public func bootstrap(token: String) async throws -> BootstrapResponse {
+        let request = BootstrapRequest(token: token)
+        return try await http.post("/agent/bootstrap", body: request, responseType: BootstrapResponse.self)
+    }
+
 }
 
 // MARK: - Request/Response Types
