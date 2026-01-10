@@ -2,7 +2,7 @@
 
 import Foundation
 
-/// Types of secrets supported by ZN-Vault.
+/// Types of secrets supported by ZnVault.
 public enum SecretType: String, Codable, Sendable {
     case opaque
     case credential
@@ -63,7 +63,7 @@ public let subTypeToType: [SecretSubType: SecretType] = [
     .toml: .setting
 ]
 
-/// Represents a secret stored in ZN-Vault.
+/// Represents a secret stored in ZnVault.
 public struct Secret: Codable, Sendable, Identifiable {
     public let id: String
     public let alias: String

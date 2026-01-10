@@ -65,7 +65,7 @@ func request(_ method: String, _ path: String, body: Data? = nil, token: String?
 struct Main {
     static func main() async {
         print("\n========================================")
-        print("ZN-Vault Swift SDK Integration Tests")
+        print("ZnVault Swift SDK Integration Tests")
         print("========================================\n")
 
         var accessToken: String?

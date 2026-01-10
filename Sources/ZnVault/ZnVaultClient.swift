@@ -2,7 +2,7 @@
 
 import Foundation
 
-/// Main client for ZN-Vault API.
+/// Main client for ZnVault API.
 ///
 /// Example usage:
 /// ```swift

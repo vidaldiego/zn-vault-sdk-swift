@@ -3,10 +3,10 @@
 import XCTest
 @testable import ZnVault
 
-/// Integration tests that run against a real ZN-Vault server.
+/// Integration tests that run against a real ZnVault server.
 ///
 /// These tests require:
-/// - A running ZN-Vault server
+/// - A running ZnVault server
 /// - Environment variables:
 ///   - ZNVAULT_BASE_URL: Server URL (e.g., "https://localhost:8443")
 ///

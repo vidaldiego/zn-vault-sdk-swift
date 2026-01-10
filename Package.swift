@@ -30,6 +30,6 @@ let package = Package(
             path: "Tests/ZnVaultTests"
         ),
         // Integration tests are run via test-integration.sh shell script
-        // which tests API compatibility against a running ZN-Vault server
+        // which tests API compatibility against a running ZnVault server
     ]
 )

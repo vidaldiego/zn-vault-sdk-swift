@@ -2,7 +2,7 @@
 
 import Foundation
 
-/// HTTP client for ZN-Vault API.
+/// HTTP client for ZnVault API.
 public actor ZnVaultHttpClient {
     private let baseURL: URL
     private let session: URLSession
@@ -329,9 +329,9 @@ public actor ZnVaultHttpClient {
 
 // MARK: - TLS Configuration
 
-/// Configuration for ZN-Vault client.
+/// Configuration for ZnVault client.
 public struct ZnVaultConfig: Sendable {
-    /// Base URL of the ZN-Vault server.
+    /// Base URL of the ZnVault server.
     public let baseURL: String
 
     /// API key for authentication (optional).

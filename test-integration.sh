@@ -1,6 +1,6 @@
 #!/bin/bash
 # Path: zn-vault-sdk-swift/test-integration.sh
-# Integration tests for ZN-Vault Swift SDK (API compatibility testing)
+# Integration tests for ZnVault Swift SDK (API compatibility testing)
 
 # Don't exit on error - we want to run all tests
 
@@ -30,7 +30,7 @@ test_result() {
 
 echo ""
 echo "========================================"
-echo "ZN-Vault Swift SDK Integration Tests"
+echo "ZnVault Swift SDK Integration Tests"
 echo "========================================"
 echo ""
 

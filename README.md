@@ -1,9 +1,9 @@
-# ZN-Vault Swift SDK
+# ZnVault Swift SDK
 
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%20|%20iOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://developer.apple.com)
 
-A type-safe, idiomatic Swift client library for ZN-Vault secrets management.
+A type-safe, idiomatic Swift client library for ZnVault secrets management.
 
 **GitHub:** https://github.com/vidaldiego/zn-vault-sdk-swift
 
@@ -11,7 +11,7 @@ A type-safe, idiomatic Swift client library for ZN-Vault secrets management.
 
 - Full async/await support
 - Type-safe API with Codable models
-- Complete coverage of ZN-Vault REST API
+- Complete coverage of ZnVault REST API
 - Automatic token management
 - Self-signed certificate support for development
 - AsyncStream support for paginated results

@@ -2,7 +2,7 @@
 
 import Foundation
 
-/// ZN-Vault SDK errors.
+/// ZnVault SDK errors.
 public enum ZnVaultError: Error, Sendable {
     /// HTTP error with status code and message.
     case httpError(statusCode: Int, message: String, details: String?)
