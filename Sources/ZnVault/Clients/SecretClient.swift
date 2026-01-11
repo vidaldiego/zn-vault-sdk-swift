@@ -137,8 +137,8 @@ public final class SecretClient: Sendable {
         if let tags = filter.tags, !tags.isEmpty {
             query["tags"] = tags.joined(separator: ",")
         }
-        query["page"] = String(filter.page)
-        query["pageSize"] = String(filter.pageSize)
+        query["limit"] = String(filter.limit)
+        query["offset"] = String(filter.offset)
 
         return try await http.get("/v1/secrets", query: query, responseType: [Secret].self)
     }
@@ -380,58 +380,58 @@ public final class SecretClient: Sendable {
     /// List secrets by sub-type.
     public func listBySubType(
         _ subType: SecretSubType,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
-        return try await list(filter: SecretFilter(subType: subType, page: page, pageSize: pageSize))
+        return try await list(filter: SecretFilter(subType: subType, limit: limit, offset: offset))
     }
 
     /// List secrets by type.
     public func listByType(
         _ type: SecretType,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
-        return try await list(filter: SecretFilter(type: type, page: page, pageSize: pageSize))
+        return try await list(filter: SecretFilter(type: type, limit: limit, offset: offset))
     }
 
     /// List certificates expiring before a specific date.
     public func listExpiringCertificates(
         before date: Date,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
             subType: .certificate,
             expiringBefore: date,
-            page: page,
-            pageSize: pageSize
+            limit: limit,
+            offset: offset
         ))
     }
 
     /// List all expiring secrets (certificates, tokens) before a specific date.
     public func listExpiring(
         before date: Date,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
             expiringBefore: date,
-            page: page,
-            pageSize: pageSize
+            limit: limit,
+            offset: offset
         ))
     }
 
     /// List secrets by alias prefix (hierarchical path).
     public func listByPath(
         _ aliasPrefix: String,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
             aliasPattern: aliasPrefix,
-            page: page,
-            pageSize: pageSize
+            limit: limit,
+            offset: offset
         ))
     }
 
@@ -458,15 +458,15 @@ public final class SecretClient: Sendable {
         _ pattern: String,
         type: SecretType? = nil,
         subType: SecretSubType? = nil,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
             type: type,
             subType: subType,
             aliasPattern: pattern,
-            page: page,
-            pageSize: pageSize
+            limit: limit,
+            offset: offset
         ))
     }
 
@@ -489,8 +489,8 @@ public final class SecretClient: Sendable {
         subType: SecretSubType? = nil,
         tags: [String]? = nil,
         expiringBefore: Date? = nil,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) async throws -> [Secret] {
         return try await list(filter: SecretFilter(
             type: type,
@@ -498,8 +498,8 @@ public final class SecretClient: Sendable {
             expiringBefore: expiringBefore,
             aliasPattern: pattern,
             tags: tags,
-            page: page,
-            pageSize: pageSize
+            limit: limit,
+            offset: offset
         ))
     }
 

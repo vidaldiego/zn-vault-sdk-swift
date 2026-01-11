@@ -2,22 +2,6 @@
 
 import Foundation
 
-/// Response type for KMS key list endpoint.
-/// The server returns { keys: [...], truncated: bool } instead of Page format.
-private struct KmsKeyListResponse: Codable, Sendable {
-    let keys: [KmsKey]
-    let truncated: Bool
-
-    /// Convert to Page for consistent API.
-    func toPage() -> Page<KmsKey> {
-        return Page(
-            items: keys,
-            total: nil,
-            nextMarker: truncated ? "more" : nil
-        )
-    }
-}
-
 /// Client for KMS (Key Management Service) operations.
 public final class KmsClient: Sendable {
     private let http: ZnVaultHttpClient
@@ -74,9 +58,7 @@ public final class KmsClient: Sendable {
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 
-        // KMS endpoint returns { keys: [...], truncated: bool } instead of Page format
-        let response = try await http.get("/v1/kms/keys", query: query, responseType: KmsKeyListResponse.self)
-        return response.toPage()
+        return try await http.get("/v1/kms/keys", query: query, responseType: Page<KmsKey>.self)
     }
 
     /// List KMS keys for a tenant (convenience method).

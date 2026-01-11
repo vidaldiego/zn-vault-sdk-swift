@@ -16,54 +16,97 @@ public struct SuccessResponse: Codable, Sendable {
     public let message: String?
 }
 
-/// Paginated response.
-public struct Page<T: Codable>: Codable where T: Sendable {
-    public let data: [T]
-    public let total: Int?
-    public let page: Int?
-    public let pageSize: Int?
+/// Pagination metadata from API response.
+public struct Pagination: Codable, Sendable {
+    public let total: Int
+    public let limit: Int
+    public let offset: Int
     public let hasMore: Bool
-    public let nextMarker: String?
-
-    /// Alias for data to match common patterns.
-    public var items: [T] { data }
-
-    /// Limit used in request.
-    public let limit: Int?
-
-    /// Offset used in request.
-    public let offset: Int?
 
     enum CodingKeys: String, CodingKey {
-        case data, total, page
-        case pageSize = "page_size"
-        case hasMore = "has_more"
-        case nextMarker = "next_marker"
-        case limit, offset
+        case total, limit, offset
+        case hasMore
+    }
+
+    public init(total: Int, limit: Int, offset: Int, hasMore: Bool) {
+        self.total = total
+        self.limit = limit
+        self.offset = offset
+        self.hasMore = hasMore
+    }
+}
+
+/// Paginated response.
+/// Supports both new format ({ items, pagination }) and legacy formats.
+public struct Page<T: Codable>: Codable where T: Sendable {
+    /// Items in this page.
+    public let items: [T]
+
+    /// Pagination metadata.
+    public let pagination: Pagination
+
+    /// Total items matching query.
+    public var total: Int { pagination.total }
+
+    /// Limit used in request.
+    public var limit: Int { pagination.limit }
+
+    /// Offset used in request.
+    public var offset: Int { pagination.offset }
+
+    /// Whether more items exist.
+    public var hasMore: Bool { pagination.hasMore }
+
+    enum CodingKeys: String, CodingKey {
+        case items, data, pagination
+        // Legacy flat fields
+        case total, limit, offset, hasMore
+        case page, pageSize = "page_size"
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        data = try container.decodeIfPresent([T].self, forKey: .data) ?? []
-        total = try container.decodeIfPresent(Int.self, forKey: .total)
-        page = try container.decodeIfPresent(Int.self, forKey: .page)
-        pageSize = try container.decodeIfPresent(Int.self, forKey: .pageSize)
-        hasMore = try container.decodeIfPresent(Bool.self, forKey: .hasMore) ?? false
-        nextMarker = try container.decodeIfPresent(String.self, forKey: .nextMarker)
-        limit = try container.decodeIfPresent(Int.self, forKey: .limit)
-        offset = try container.decodeIfPresent(Int.self, forKey: .offset)
+
+        // Decode items: try 'items' first, then 'data', then empty array
+        if let items = try container.decodeIfPresent([T].self, forKey: .items) {
+            self.items = items
+        } else if let data = try container.decodeIfPresent([T].self, forKey: .data) {
+            self.items = data
+        } else {
+            self.items = []
+        }
+
+        // Decode pagination: try nested 'pagination' object first, then flat fields
+        if let pagination = try container.decodeIfPresent(Pagination.self, forKey: .pagination) {
+            self.pagination = pagination
+        } else {
+            // Legacy flat format
+            let total = try container.decodeIfPresent(Int.self, forKey: .total) ?? items.count
+            var limit = try container.decodeIfPresent(Int.self, forKey: .limit)
+            if limit == nil {
+                limit = try container.decodeIfPresent(Int.self, forKey: .pageSize)
+            }
+            let offset = try container.decodeIfPresent(Int.self, forKey: .offset) ?? 0
+            let hasMore = try container.decodeIfPresent(Bool.self, forKey: .hasMore) ?? false
+            self.pagination = Pagination(total: total, limit: limit ?? 50, offset: offset, hasMore: hasMore)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(items, forKey: .items)
+        try container.encode(pagination, forKey: .pagination)
     }
 
     /// Create a page with specific items for testing.
-    public init(items: [T], total: Int? = nil, limit: Int = 50, offset: Int = 0, nextMarker: String? = nil) {
-        self.data = items
-        self.total = total
-        self.page = nil
-        self.pageSize = limit
-        self.hasMore = nextMarker != nil
-        self.nextMarker = nextMarker
-        self.limit = limit
-        self.offset = offset
+    public init(items: [T], total: Int? = nil, limit: Int = 50, offset: Int = 0, hasMore: Bool = false) {
+        self.items = items
+        self.pagination = Pagination(
+            total: total ?? items.count,
+            limit: limit,
+            offset: offset,
+            hasMore: hasMore
+        )
     }
 }
 

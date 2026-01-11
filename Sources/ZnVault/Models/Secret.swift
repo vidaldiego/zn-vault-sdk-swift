@@ -333,8 +333,8 @@ public struct SecretFilter: Sendable {
     /// Examples: `web/*`, `*/env/*`, `db-*/prod*`
     public let aliasPattern: String?
     public let tags: [String]?
-    public let page: Int
-    public let pageSize: Int
+    public let limit: Int
+    public let offset: Int
 
     /// Backward compatibility alias for aliasPattern
     public var aliasPrefix: String? { aliasPattern }
@@ -346,8 +346,8 @@ public struct SecretFilter: Sendable {
         expiringBefore: Date? = nil,
         aliasPattern: String? = nil,
         tags: [String]? = nil,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) {
         self.type = type
         self.subType = subType
@@ -355,8 +355,8 @@ public struct SecretFilter: Sendable {
         self.expiringBefore = expiringBefore
         self.aliasPattern = aliasPattern
         self.tags = tags
-        self.page = page
-        self.pageSize = pageSize
+        self.limit = limit
+        self.offset = offset
     }
 
     /// Backward compatible initializer with aliasPrefix parameter name
@@ -367,8 +367,8 @@ public struct SecretFilter: Sendable {
         expiringBefore: Date? = nil,
         aliasPrefix: String?,
         tags: [String]? = nil,
-        page: Int = 1,
-        pageSize: Int = 100
+        limit: Int = 50,
+        offset: Int = 0
     ) {
         self.type = type
         self.subType = subType
@@ -376,8 +376,8 @@ public struct SecretFilter: Sendable {
         self.expiringBefore = expiringBefore
         self.aliasPattern = aliasPrefix
         self.tags = tags
-        self.page = page
-        self.pageSize = pageSize
+        self.limit = limit
+        self.offset = offset
     }
 }
 
