@@ -182,7 +182,8 @@ public final class AuthClient: Sendable {
 
     /// List API keys.
     public func listApiKeys() async throws -> [ApiKey] {
-        return try await http.get("/auth/api-keys", responseType: [ApiKey].self)
+        let response = try await http.get("/auth/api-keys", responseType: ApiKeyListResponse.self)
+        return response.items
     }
 
     /// Revoke an API key.

@@ -325,12 +325,32 @@ public struct CreateManagedApiKeyResponse: Codable, Sendable {
 
 /// Response listing managed API keys.
 public struct ManagedApiKeyListResponse: Codable, Sendable {
-    public let keys: [ManagedApiKey]
-    public let total: Int
+    public let items: [ManagedApiKey]
+    public let pagination: Pagination?
 
     enum CodingKeys: String, CodingKey {
-        case keys, total
+        case items, pagination
     }
+
+    /// Convenience accessor for the keys
+    public var keys: [ManagedApiKey] { items }
+
+    /// Convenience accessor for total count
+    public var total: Int { pagination?.total ?? items.count }
+}
+
+/// Response listing API keys.
+public struct ApiKeyListResponse: Codable, Sendable {
+    public let items: [ApiKey]
+    public let expiringSoon: [ApiKey]?
+    public let pagination: Pagination?
+
+    enum CodingKeys: String, CodingKey {
+        case items, expiringSoon, pagination
+    }
+
+    /// Convenience accessor for the keys
+    public var keys: [ApiKey] { items }
 }
 
 /// Request to update managed API key configuration.
