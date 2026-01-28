@@ -150,34 +150,34 @@ final class ZnVaultTests: XCTestCase {
         let filter = SecretFilter(
             type: .credential,
             tags: ["test"],
-            pageSize: 100
+            limit: 100
         )
 
         XCTAssertEqual(filter.type, SecretType.credential)
         XCTAssertEqual(filter.tags, ["test"])
-        XCTAssertEqual(filter.pageSize, 100)
-        XCTAssertEqual(filter.page, 1)
+        XCTAssertEqual(filter.limit, 100)
+        XCTAssertEqual(filter.offset, 0)
     }
 
     func testSecretFilterWithPattern() {
         // Test wildcard pattern matching
         let filter = SecretFilter(
             aliasPattern: "*/env/secret_*",
-            page: 1,
-            pageSize: 50
+            limit: 50,
+            offset: 0
         )
 
         XCTAssertEqual(filter.aliasPattern, "*/env/secret_*")
         XCTAssertEqual(filter.aliasPrefix, "*/env/secret_*")  // Backward compat
-        XCTAssertEqual(filter.pageSize, 50)
+        XCTAssertEqual(filter.limit, 50)
     }
 
     func testSecretFilterBackwardCompatibility() {
         // Test backward compatibility with aliasPrefix parameter
         let filter = SecretFilter(
             aliasPrefix: "web/*",
-            page: 1,
-            pageSize: 100
+            limit: 100,
+            offset: 0
         )
 
         XCTAssertEqual(filter.aliasPattern, "web/*")
@@ -280,7 +280,7 @@ final class ZnVaultTests: XCTestCase {
             total: 10,
             limit: 3,
             offset: 0,
-            nextMarker: "next"
+            hasMore: true
         )
 
         let lastPage = Page<String>(
@@ -288,7 +288,7 @@ final class ZnVaultTests: XCTestCase {
             total: 10,
             limit: 3,
             offset: 9,
-            nextMarker: nil
+            hasMore: false
         )
 
         XCTAssertTrue(pageWithMore.hasMore)
