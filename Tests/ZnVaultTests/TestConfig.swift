@@ -152,7 +152,10 @@ enum TestConfig {
             .build()
     }
 
-    /// Create an authenticated client as superadmin (cached).
+    /// Create a tenant-scoped client logged in as superadmin (cached).
+    ///
+    /// Note: superadmins are rejected on tenant-scoped routes. For tenant
+    /// CRUD use ``createSuperadminAdminClient()`` instead.
     static func createSuperadminClient() async throws -> ZnVaultClient {
         return try await ClientCache.shared.getOrCreate(key: "superadmin") {
             let client = try createTestClient()
@@ -162,6 +165,24 @@ enum TestConfig {
             )
             return client
         }
+    }
+
+    /// Create an authenticated ``ZnVaultSuperadminClient`` (for tenant CRUD).
+    static func createSuperadminAdminClient() async throws -> ZnVaultSuperadminClient {
+        let admin = try ZnVaultSuperadminClient.builder()
+            .baseURL(baseURL)
+            .trustSelfSigned(true)
+            .insecureTLS(true)
+            .build()
+        // Login via a tenant-scoped client, then copy tokens to the admin client.
+        let tenantClient = try await createSuperadminClient()
+        if let accessToken = await tenantClient.http.getAccessToken() {
+            await admin.http.setAccessToken(accessToken)
+        }
+        if let refreshToken = await tenantClient.http.getRefreshToken() {
+            await admin.http.setRefreshToken(refreshToken)
+        }
+        return admin
     }
 
     /// Create an authenticated client as tenant admin (cached).

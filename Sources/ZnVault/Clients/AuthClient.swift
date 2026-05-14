@@ -143,16 +143,11 @@ public final class AuthClient: Sendable {
 
     // MARK: - API Keys
 
-    /// Create an API key.
+    /// Create an API key in the caller's tenant.
     ///
-    /// - Parameters:
-    ///   - name: Name for the API key
-    ///   - permissions: Required list of permissions for the key
-    ///   - expiresInDays: Optional expiration in days
-    ///   - description: Optional description
-    ///   - ipAllowlist: Optional list of allowed IPs/CIDRs
-    ///   - conditions: Optional inline ABAC conditions
-    ///   - tenantId: Required for superadmin creating tenant-scoped keys
+    /// Tenant is derived server-side from the authenticated principal. For
+    /// cross-tenant API key creation, use `ZnVaultSuperadminClient`.
+    ///
     /// - Returns: The created API key with key value (only shown once!)
     public func createApiKey(
         name: String,
@@ -160,8 +155,7 @@ public final class AuthClient: Sendable {
         expiresInDays: Int? = nil,
         description: String? = nil,
         ipAllowlist: [String]? = nil,
-        conditions: ApiKeyConditions? = nil,
-        tenantId: String? = nil
+        conditions: ApiKeyConditions? = nil
     ) async throws -> CreateApiKeyResponse {
         let request = CreateApiKeyRequest(
             name: name,
@@ -171,13 +165,7 @@ public final class AuthClient: Sendable {
             ipAllowlist: ipAllowlist,
             conditions: conditions
         )
-
-        // Tenant ID is passed as query parameter
-        let path = tenantId != nil
-            ? "/auth/api-keys?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
-            : "/auth/api-keys"
-
-        return try await http.post(path, body: request, responseType: CreateApiKeyResponse.self)
+        return try await http.post("/auth/api-keys", body: request, responseType: CreateApiKeyResponse.self)
     }
 
     /// List API keys.
@@ -222,24 +210,12 @@ public final class AuthClient: Sendable {
     }
 
     // MARK: - Managed API Keys
+    //
+    // All managed-key and registration-token methods are scoped to the
+    // caller's tenant. For cross-tenant management, use ZnVaultSuperadminClient
+    // (server route /v1/superadmin/api-keys/* — not yet implemented).
 
-    /// Create a managed API key with auto-rotation configuration.
-    ///
-    /// Managed keys automatically rotate based on the configured mode:
-    /// - `scheduled`: Rotates at fixed intervals (requires rotationInterval)
-    /// - `onUse`: Rotates after being used (TTL resets on each use)
-    /// - `onBind`: Rotates each time bind is called
-    ///
-    /// - Parameters:
-    ///   - name: Unique name for the managed key
-    ///   - permissions: List of permissions for the key
-    ///   - rotationMode: Rotation mode
-    ///   - rotationInterval: Interval for scheduled rotation (e.g., "24h", "7d")
-    ///   - gracePeriod: Grace period for smooth transitions (e.g., "5m")
-    ///   - description: Optional description
-    ///   - expiresInDays: Optional expiration in days
-    ///   - tenantId: Required for superadmin creating tenant-scoped keys
-    /// - Returns: The created managed key metadata (use bind to get the key value)
+    /// Create a managed API key with auto-rotation in the caller's tenant.
     public func createManagedApiKey(
         name: String,
         permissions: [String],
@@ -247,8 +223,7 @@ public final class AuthClient: Sendable {
         rotationInterval: String? = nil,
         gracePeriod: String? = nil,
         description: String? = nil,
-        expiresInDays: Int? = nil,
-        tenantId: String? = nil
+        expiresInDays: Int? = nil
     ) async throws -> CreateManagedApiKeyResponse {
         let request = CreateManagedApiKeyRequest(
             name: name,
@@ -259,211 +234,99 @@ public final class AuthClient: Sendable {
             description: description,
             expiresInDays: expiresInDays
         )
-
-        let path = tenantId != nil
-            ? "/auth/api-keys/managed?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
-            : "/auth/api-keys/managed"
-
-        return try await http.post(path, body: request, responseType: CreateManagedApiKeyResponse.self)
+        return try await http.post("/auth/api-keys/managed", body: request, responseType: CreateManagedApiKeyResponse.self)
     }
 
-    /// List managed API keys.
-    ///
-    /// - Parameter tenantId: Optional tenant ID filter (for superadmin)
-    /// - Returns: List of managed keys
-    public func listManagedApiKeys(tenantId: String? = nil) async throws -> [ManagedApiKey] {
-        let path = tenantId != nil
-            ? "/auth/api-keys/managed?tenantId=\(tenantId!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId!)"
-            : "/auth/api-keys/managed"
-
-        let response = try await http.get(path, responseType: ManagedApiKeyListResponse.self)
+    /// List managed API keys in the caller's tenant.
+    public func listManagedApiKeys() async throws -> [ManagedApiKey] {
+        let response = try await http.get("/auth/api-keys/managed", responseType: ManagedApiKeyListResponse.self)
         return response.keys
     }
 
-    /// Get a managed API key by name.
-    ///
-    /// - Parameters:
-    ///   - name: The managed key name
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: The managed key metadata
-    public func getManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedApiKey {
+    /// Get a managed API key by name in the caller's tenant.
+    public func getManagedApiKey(name: String) async throws -> ManagedApiKey {
         let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        var path = "/auth/api-keys/managed/\(encodedName)"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
-        return try await http.get(path, responseType: ManagedApiKey.self)
+        return try await http.get("/auth/api-keys/managed/\(encodedName)", responseType: ManagedApiKey.self)
     }
 
     /// Bind to a managed API key to get the current key value.
     ///
     /// This is the primary method for agents to obtain their API key.
-    /// The response includes rotation metadata to help determine when
-    /// to re-bind for a new key.
-    ///
-    /// Security: This endpoint requires the caller to already have a valid
-    /// API key (the current one, even during grace period). This prevents
-    /// unauthorized access to managed keys.
-    ///
-    /// - Parameters:
-    ///   - name: The managed key name
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: The current key value and rotation metadata
-    public func bindManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedKeyBindResponse {
+    /// Security: requires the caller to already have a valid API key
+    /// (the current one, even during grace period).
+    public func bindManagedApiKey(name: String) async throws -> ManagedKeyBindResponse {
         let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        var path = "/auth/api-keys/managed/\(encodedName)/bind"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
-        return try await http.post(path, responseType: ManagedKeyBindResponse.self)
+        return try await http.post("/auth/api-keys/managed/\(encodedName)/bind", responseType: ManagedKeyBindResponse.self)
     }
 
     /// Force rotate a managed API key.
     ///
     /// Creates a new key immediately, regardless of the rotation schedule.
     /// The old key remains valid during the grace period.
-    ///
-    /// - Parameters:
-    ///   - name: The managed key name
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: The new key value and rotation info
-    public func rotateManagedApiKey(name: String, tenantId: String? = nil) async throws -> ManagedKeyRotateResponse {
+    public func rotateManagedApiKey(name: String) async throws -> ManagedKeyRotateResponse {
         let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        var path = "/auth/api-keys/managed/\(encodedName)/rotate"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
-        return try await http.post(path, responseType: ManagedKeyRotateResponse.self)
+        return try await http.post("/auth/api-keys/managed/\(encodedName)/rotate", responseType: ManagedKeyRotateResponse.self)
     }
 
     /// Update managed API key configuration.
-    ///
-    /// - Parameters:
-    ///   - name: The managed key name
-    ///   - rotationInterval: New rotation interval
-    ///   - gracePeriod: New grace period
-    ///   - enabled: Enable/disable the key
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: Updated managed key metadata
     public func updateManagedApiKeyConfig(
         name: String,
         rotationInterval: String? = nil,
         gracePeriod: String? = nil,
-        enabled: Bool? = nil,
-        tenantId: String? = nil
+        enabled: Bool? = nil
     ) async throws -> ManagedApiKey {
         let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        var path = "/auth/api-keys/managed/\(encodedName)/config"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
         let request = UpdateManagedApiKeyConfigRequest(
             rotationInterval: rotationInterval,
             gracePeriod: gracePeriod,
             enabled: enabled
         )
-
-        return try await http.patch(path, body: request, responseType: ManagedApiKey.self)
+        return try await http.patch("/auth/api-keys/managed/\(encodedName)/config", body: request, responseType: ManagedApiKey.self)
     }
 
     /// Delete a managed API key.
-    ///
-    /// - Parameters:
-    ///   - name: The managed key name
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    public func deleteManagedApiKey(name: String, tenantId: String? = nil) async throws {
+    public func deleteManagedApiKey(name: String) async throws {
         let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name
-        var path = "/auth/api-keys/managed/\(encodedName)"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
-        try await http.delete(path)
+        try await http.delete("/auth/api-keys/managed/\(encodedName)")
     }
 
     // MARK: - Registration Tokens (Agent Bootstrap)
 
     /// Create a registration token for agent bootstrapping.
-    ///
-    /// Registration tokens are one-time use tokens that allow agents to
-    /// obtain their managed API key without prior authentication.
-    ///
-    /// - Parameters:
-    ///   - managedKeyName: The managed key to create a token for
-    ///   - expiresIn: Token expiration (e.g., "1h", "24h"). Min 1m, max 24h.
-    ///   - description: Optional description for audit trail
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: The created token (shown only once - save it immediately!)
     public func createRegistrationToken(
         managedKeyName: String,
         expiresIn: String? = nil,
-        description: String? = nil,
-        tenantId: String? = nil
+        description: String? = nil
     ) async throws -> CreateRegistrationTokenResponse {
         let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
-        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
         let request = CreateRegistrationTokenRequest(expiresIn: expiresIn, description: description)
-        return try await http.post(path, body: request, responseType: CreateRegistrationTokenResponse.self)
+        return try await http.post(
+            "/auth/api-keys/managed/\(encodedName)/registration-tokens",
+            body: request,
+            responseType: CreateRegistrationTokenResponse.self
+        )
     }
 
     /// List registration tokens for a managed key.
-    ///
-    /// - Parameters:
-    ///   - managedKeyName: The managed key name
-    ///   - includeUsed: Include tokens that have been used
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
-    /// - Returns: List of registration tokens
     public func listRegistrationTokens(
         managedKeyName: String,
-        includeUsed: Bool = false,
-        tenantId: String? = nil
+        includeUsed: Bool = false
     ) async throws -> [RegistrationToken] {
         let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
-        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens"
-
-        var queryItems: [String] = []
-        if includeUsed {
-            queryItems.append("includeUsed=true")
-        }
-        if let tenantId = tenantId {
-            queryItems.append("tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)")
-        }
-        if !queryItems.isEmpty {
-            path += "?\(queryItems.joined(separator: "&"))"
-        }
-
+        let path = includeUsed
+            ? "/auth/api-keys/managed/\(encodedName)/registration-tokens?includeUsed=true"
+            : "/auth/api-keys/managed/\(encodedName)/registration-tokens"
         let response = try await http.get(path, responseType: RegistrationTokenListResponse.self)
         return response.tokens
     }
 
     /// Revoke a registration token.
-    ///
-    /// Prevents the token from being used for bootstrapping.
-    ///
-    /// - Parameters:
-    ///   - managedKeyName: The managed key name
-    ///   - tokenId: The token ID to revoke
-    ///   - tenantId: Optional tenant ID (for cross-tenant access)
     public func revokeRegistrationToken(
         managedKeyName: String,
-        tokenId: String,
-        tenantId: String? = nil
+        tokenId: String
     ) async throws {
         let encodedName = managedKeyName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? managedKeyName
-        var path = "/auth/api-keys/managed/\(encodedName)/registration-tokens/\(tokenId)"
-        if let tenantId = tenantId {
-            path += "?tenantId=\(tenantId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tenantId)"
-        }
-
-        try await http.delete(path)
+        try await http.delete("/auth/api-keys/managed/\(encodedName)/registration-tokens/\(tokenId)")
     }
 
     /// Bootstrap an agent using a registration token.

@@ -12,19 +12,19 @@ public final class UserClient: Sendable {
 
     // MARK: - CRUD Operations
 
-    /// Create a new user.
+    /// Create a new user in the caller's tenant. Tenant is derived from the
+    /// authenticated principal by the server. For cross-tenant user creation,
+    /// use `ZnVaultSuperadminClient`.
     public func create(
         username: String,
         password: String,
         email: String? = nil,
-        tenantId: String? = nil,
         role: String? = nil
     ) async throws -> User {
         let request = CreateUserRequest(
             username: username,
             password: password,
             email: email,
-            tenantId: tenantId,
             role: role
         )
         return try await http.post("/v1/users", body: request, responseType: User.self)
@@ -46,13 +46,10 @@ public final class UserClient: Sendable {
         return try await http.get("/v1/users/by-username", query: query, responseType: User.self)
     }
 
-    /// List users.
+    /// List users in the caller's tenant.
     public func list(filter: UserFilter = UserFilter()) async throws -> Page<User> {
         var query: [String: String] = [:]
 
-        if let tenantId = filter.tenantId {
-            query["tenantId"] = tenantId
-        }
         if let status = filter.status {
             query["status"] = status.rawValue
         }
@@ -138,21 +135,18 @@ public final class UserClient: Sendable {
 
 // MARK: - Request Types
 
-/// Request to update user.
+/// Request to update user. The user's tenant cannot be changed.
 public struct UpdateUserRequest: Codable, Sendable {
     public let email: String?
-    public let tenantId: String?
     public let status: UserStatus?
 
     enum CodingKeys: String, CodingKey {
         case email
-        case tenantId = "tenant_id"
         case status
     }
 
-    public init(email: String? = nil, tenantId: String? = nil, status: UserStatus? = nil) {
+    public init(email: String? = nil, status: UserStatus? = nil) {
         self.email = email
-        self.tenantId = tenantId
         self.status = status
     }
 }
@@ -170,22 +164,20 @@ public struct AdminResetPasswordRequest: Codable, Sendable {
     }
 }
 
-/// User filter.
+/// User filter. The list is always scoped to the caller's tenant by the
+/// server; there is no client-supplied tenant filter.
 public struct UserFilter: Sendable {
-    public let tenantId: String?
     public let status: UserStatus?
     public let role: String?
     public let limit: Int
     public let offset: Int
 
     public init(
-        tenantId: String? = nil,
         status: UserStatus? = nil,
         role: String? = nil,
         limit: Int = 50,
         offset: Int = 0
     ) {
-        self.tenantId = tenantId
         self.status = status
         self.role = role
         self.limit = limit

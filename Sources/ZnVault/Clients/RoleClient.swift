@@ -43,9 +43,6 @@ public final class RoleClient: Sendable {
         if filter.includeSystem {
             query["includeSystem"] = "true"
         }
-        if let tenantId = filter.tenantId {
-            query["tenantId"] = tenantId
-        }
         query["limit"] = String(filter.limit)
         query["offset"] = String(filter.offset)
 

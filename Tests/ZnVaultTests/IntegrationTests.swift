@@ -157,9 +157,7 @@ final class SecretsIntegrationTests: XCTestCase {
                 "username": "testuser",
                 "password": "testpass123"
             ],
-            tags: ["test", "credential"],
-            tenant: TestConfig.defaultTenant
-        )
+            tags: ["test", "credential"]        )
 
         createdSecretIds.append(secret.id)
 
@@ -183,9 +181,7 @@ final class SecretsIntegrationTests: XCTestCase {
             data: [
                 "api_key": "sk_live_abc123",
                 "api_secret": "secret_xyz789"
-            ],
-            tenant: TestConfig.defaultTenant
-        )
+            ]        )
 
         createdSecretIds.append(secret.id)
 
@@ -204,9 +200,7 @@ final class SecretsIntegrationTests: XCTestCase {
             data: [
                 "username": "decryptuser",
                 "password": "decryptpass"
-            ],
-            tenant: TestConfig.defaultTenant
-        )
+            ]        )
 
         createdSecretIds.append(created.id)
 
@@ -226,9 +220,7 @@ final class SecretsIntegrationTests: XCTestCase {
         let created = try await client.secrets.create(
             alias: alias,
             type: .opaque,
-            data: ["key": "original_value"],
-            tenant: TestConfig.defaultTenant
-        )
+            data: ["key": "original_value"]        )
 
         createdSecretIds.append(created.id)
         XCTAssertEqual(created.version, 1)
@@ -257,9 +249,7 @@ final class SecretsIntegrationTests: XCTestCase {
             data: [
                 "username": "user",
                 "password": "oldpass"
-            ],
-            tenant: TestConfig.defaultTenant
-        )
+            ]        )
 
         createdSecretIds.append(created.id)
 
@@ -288,9 +278,7 @@ final class SecretsIntegrationTests: XCTestCase {
         let created = try await client.secrets.create(
             alias: alias,
             type: .opaque,
-            data: ["key": "v1"],
-            tenant: TestConfig.defaultTenant
-        )
+            data: ["key": "v1"]        )
 
         createdSecretIds.append(created.id)
         XCTAssertEqual(created.version, 1)
@@ -327,8 +315,7 @@ final class SecretsIntegrationTests: XCTestCase {
             let secret = try await client.secrets.create(
                 alias: TestConfig.uniqueAlias("list-\(i)"),
                 type: .opaque,
-                data: ["index": i],
-                tenant: TestConfig.defaultTenant
+                data: ["index": i]
             )
             createdSecretIds.append(secret.id)
         }
@@ -346,9 +333,7 @@ final class SecretsIntegrationTests: XCTestCase {
         let created = try await client.secrets.create(
             alias: alias,
             type: .opaque,
-            data: ["key": "value"],
-            tenant: TestConfig.defaultTenant
-        )
+            data: ["key": "value"]        )
 
         // Delete it (don't add to cleanup list since we're testing delete)
         try await client.secrets.delete(id: created.id)
@@ -393,7 +378,7 @@ final class KmsIntegrationTests: XCTestCase {
     }
 
     func testListKeys() async throws {
-        let page = try await client.kms.listKeys(tenant: TestConfig.defaultTenant)
+        let page = try await client.kms.listKeys()
         XCTAssertNotNil(page.items)
         print("✓ Listed \(page.items.count) keys")
     }
@@ -410,7 +395,8 @@ final class UserIntegrationTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
             throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
         }
-        client = try await TestConfig.createSuperadminClient()
+        // /v1/users is tenant-scoped; superadmins are rejected. Use tenant admin.
+        client = try await TestConfig.createTenantAdminClient()
         createdUserIds = []
     }
 
@@ -440,7 +426,6 @@ final class UserIntegrationTests: XCTestCase {
             username: username,
             password: "TestPassword123#",
             email: "\(username)@example.com",
-            tenantId: TestConfig.defaultTenant,
             role: "user"
         )
 
@@ -460,8 +445,7 @@ final class UserIntegrationTests: XCTestCase {
 
         let user = try await client.users.create(
             username: username,
-            password: "TestPassword123#",
-            tenantId: TestConfig.defaultTenant
+            password: "TestPassword123#"
         )
 
         // Delete it (don't add to cleanup list)
@@ -475,17 +459,18 @@ final class UserIntegrationTests: XCTestCase {
 
 final class TenantIntegrationTests: XCTestCase {
 
-    var client: ZnVaultClient!
+    /// Tenant CRUD lives on ZnVaultSuperadminClient now.
+    var admin: ZnVaultSuperadminClient!
 
     override func setUp() async throws {
         guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
             throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
         }
-        client = try await TestConfig.createSuperadminClient()
+        admin = try await TestConfig.createSuperadminAdminClient()
     }
 
     func testListTenants() async throws {
-        let page = try await client.tenants.list()
+        let page = try await admin.tenants.list()
         XCTAssertNotNil(page.items)
         print("✓ Listed \(page.items.count) tenants")
     }
@@ -501,7 +486,8 @@ final class RoleIntegrationTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
             throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
         }
-        client = try await TestConfig.createSuperadminClient()
+        // /v1/* routes are tenant-scoped; superadmins are rejected. Use tenant admin.
+        client = try await TestConfig.createTenantAdminClient()
     }
 
     func testListRoles() async throws {
@@ -521,7 +507,8 @@ final class AuditIntegrationTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["ZNVAULT_BASE_URL"] != nil else {
             throw XCTSkip("Integration tests require ZNVAULT_BASE_URL environment variable")
         }
-        client = try await TestConfig.createSuperadminClient()
+        // /v1/* routes are tenant-scoped; superadmins are rejected. Use tenant admin.
+        client = try await TestConfig.createTenantAdminClient()
     }
 
     func testListAuditLogs() async throws {
@@ -547,7 +534,8 @@ final class IntegrationTests: XCTestCase {
         }
 
         // Use superadmin login for full access
-        client = try await TestConfig.createSuperadminClient()
+        // /v1/* routes are tenant-scoped; superadmins are rejected. Use tenant admin.
+        client = try await TestConfig.createTenantAdminClient()
     }
 
     // MARK: - Health Check
@@ -576,7 +564,7 @@ final class IntegrationTests: XCTestCase {
     // MARK: - KMS Tests (read-only)
 
     func testListKmsKeys() async throws {
-        let page = try await client.kms.listKeys(tenant: Self.defaultTenant)
+        let page = try await client.kms.listKeys()
         XCTAssertNotNil(page.items)
     }
 
@@ -584,11 +572,6 @@ final class IntegrationTests: XCTestCase {
 
     func testListUsers() async throws {
         let page = try await client.users.list()
-        XCTAssertNotNil(page.items)
-    }
-
-    func testListTenants() async throws {
-        let page = try await client.tenants.list()
         XCTAssertNotNil(page.items)
     }
 

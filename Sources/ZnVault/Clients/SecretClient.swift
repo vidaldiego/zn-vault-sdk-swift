@@ -23,7 +23,6 @@ public final class SecretClient: Sendable {
     ///   - ttlUntil: Optional user-defined expiration date
     ///   - tags: Optional tags for categorization
     ///   - contentType: Optional MIME type
-    ///   - tenant: Optional tenant (required for superadmin)
     public func create(
         alias: String,
         type: SecretType,
@@ -33,8 +32,7 @@ public final class SecretClient: Sendable {
         expiresAt: Date? = nil,
         ttlUntil: Date? = nil,
         tags: [String]? = nil,
-        contentType: String? = nil,
-        tenant: String? = nil
+        contentType: String? = nil
     ) async throws -> Secret {
         let request = CreateSecretRequest(
             alias: alias,
@@ -45,8 +43,7 @@ public final class SecretClient: Sendable {
             expiresAt: expiresAt,
             ttlUntil: ttlUntil,
             tags: tags,
-            contentType: contentType,
-            tenant: tenant
+            contentType: contentType
         )
         return try await http.post("/v1/secrets", body: request, responseType: Secret.self)
     }
@@ -564,21 +561,11 @@ public final class SecretClient: Sendable {
 
     // MARK: - Keypair Generation
 
-    /// Generate a cryptographic keypair (RSA, Ed25519, or ECDSA).
-    /// - Parameters:
-    ///   - algorithm: The keypair algorithm (RSA, Ed25519, ECDSA)
-    ///   - alias: The alias/name for the keypair
-    ///   - tenant: The tenant identifier
-    ///   - rsaBits: RSA key size (2048 or 4096, required for RSA)
-    ///   - ecdsaCurve: ECDSA curve (P-256 or P-384, required for ECDSA)
-    ///   - comment: Optional comment for the keypair
-    ///   - publishPublicKey: Whether to make the public key publicly accessible
-    ///   - tags: Optional tags for categorization
-    /// - Returns: Generated keypair with private and public key information
+    /// Generate a cryptographic keypair (RSA, Ed25519, or ECDSA) in the
+    /// caller's tenant. Tenant is derived from the authenticated principal.
     public func generateKeypair(
         algorithm: KeypairAlgorithm,
         alias: String,
-        tenant: String,
         rsaBits: RSABits? = nil,
         ecdsaCurve: ECDSACurve? = nil,
         comment: String? = nil,
@@ -588,7 +575,6 @@ public final class SecretClient: Sendable {
         let request = GenerateKeypairRequest(
             algorithm: algorithm,
             alias: alias,
-            tenant: tenant,
             rsaBits: rsaBits,
             ecdsaCurve: ecdsaCurve,
             comment: comment,

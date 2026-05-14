@@ -44,11 +44,10 @@ public final class KmsClient: Sendable {
         return try await http.get("/v1/kms/keys/\(keyId)", responseType: KmsKey.self)
     }
 
-    /// List KMS keys for a tenant.
-    public func listKeys(filter: KeyFilter) async throws -> Page<KmsKey> {
+    /// List KMS keys in the caller's tenant.
+    public func listKeys(filter: KeyFilter = KeyFilter()) async throws -> Page<KmsKey> {
         var query: [String: String] = [:]
 
-        query["tenant"] = filter.tenant
         if let state = filter.state {
             query["state"] = state.rawValue
         }
@@ -59,11 +58,6 @@ public final class KmsClient: Sendable {
         query["offset"] = String(filter.offset)
 
         return try await http.get("/v1/kms/keys", query: query, responseType: Page<KmsKey>.self)
-    }
-
-    /// List KMS keys for a tenant (convenience method).
-    public func listKeys(tenant: String) async throws -> Page<KmsKey> {
-        return try await listKeys(filter: KeyFilter(tenant: tenant))
     }
 
     /// Update key metadata.

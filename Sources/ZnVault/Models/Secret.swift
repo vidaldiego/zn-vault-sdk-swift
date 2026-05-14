@@ -217,10 +217,9 @@ public struct CreateSecretRequest: Codable, Sendable {
     public let ttlUntil: Date?
     public let tags: [String]?
     public let contentType: String?
-    public let tenant: String?  // Required for superadmin
 
     enum CodingKeys: String, CodingKey {
-        case alias, type, data, tags, tenant
+        case alias, type, data, tags
         case subType
         case fileName
         case expiresAt
@@ -237,8 +236,7 @@ public struct CreateSecretRequest: Codable, Sendable {
         expiresAt: Date? = nil,
         ttlUntil: Date? = nil,
         tags: [String]? = nil,
-        contentType: String? = nil,
-        tenant: String? = nil
+        contentType: String? = nil
     ) {
         self.alias = alias
         self.type = type
@@ -249,7 +247,6 @@ public struct CreateSecretRequest: Codable, Sendable {
         self.ttlUntil = ttlUntil
         self.tags = tags
         self.contentType = contentType
-        self.tenant = tenant
     }
 }
 
@@ -468,11 +465,11 @@ public enum ECDSACurve: String, Codable, Sendable {
     case p384 = "P-384"
 }
 
-/// Request to generate a keypair.
+/// Request to generate a keypair. Tenant is derived from the authenticated
+/// principal by the server.
 public struct GenerateKeypairRequest: Codable, Sendable {
     public let algorithm: KeypairAlgorithm
     public let alias: String
-    public let tenant: String
     public let rsaBits: RSABits?
     public let ecdsaCurve: ECDSACurve?
     public let comment: String?
@@ -480,7 +477,7 @@ public struct GenerateKeypairRequest: Codable, Sendable {
     public let tags: [String]?
 
     enum CodingKeys: String, CodingKey {
-        case algorithm, alias, tenant, comment, tags
+        case algorithm, alias, comment, tags
         case rsaBits
         case ecdsaCurve
         case publishPublicKey
@@ -489,7 +486,6 @@ public struct GenerateKeypairRequest: Codable, Sendable {
     public init(
         algorithm: KeypairAlgorithm,
         alias: String,
-        tenant: String,
         rsaBits: RSABits? = nil,
         ecdsaCurve: ECDSACurve? = nil,
         comment: String? = nil,
@@ -498,7 +494,6 @@ public struct GenerateKeypairRequest: Codable, Sendable {
     ) {
         self.algorithm = algorithm
         self.alias = alias
-        self.tenant = tenant
         self.rsaBits = rsaBits
         self.ecdsaCurve = ecdsaCurve
         self.comment = comment

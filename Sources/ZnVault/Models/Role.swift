@@ -67,21 +67,19 @@ public struct UpdateRoleRequest: Codable, Sendable {
     }
 }
 
-/// Role filter.
+/// Role filter. The list is always scoped to the caller's tenant by the
+/// server; there is no client-supplied tenant filter.
 public struct RoleFilter: Sendable {
     public let includeSystem: Bool
-    public let tenantId: String?
     public let limit: Int
     public let offset: Int
 
     public init(
         includeSystem: Bool = false,
-        tenantId: String? = nil,
         limit: Int = 50,
         offset: Int = 0
     ) {
         self.includeSystem = includeSystem
-        self.tenantId = tenantId
         self.limit = limit
         self.offset = offset
     }

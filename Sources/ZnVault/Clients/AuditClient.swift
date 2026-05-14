@@ -31,9 +31,6 @@ public final class AuditClient: Sendable {
         if let userId = filter.userId {
             query["userId"] = userId
         }
-        if let tenantId = filter.tenantId {
-            query["tenantId"] = tenantId
-        }
         if let startDate = filter.startDate {
             query["startDate"] = ISO8601DateFormatter().string(from: startDate)
         }
@@ -68,7 +65,6 @@ public final class AuditClient: Sendable {
                             startDate: filter.startDate,
                             endDate: filter.endDate,
                             userId: filter.userId,
-                            tenantId: filter.tenantId,
                             limit: filter.limit,
                             offset: currentOffset
                         )
@@ -90,11 +86,10 @@ public final class AuditClient: Sendable {
 
     // MARK: - Statistics
 
-    /// Get audit statistics.
+    /// Get audit statistics for the caller's tenant.
     public func getStats(
         startDate: Date? = nil,
-        endDate: Date? = nil,
-        tenantId: String? = nil
+        endDate: Date? = nil
     ) async throws -> AuditStats {
         var query: [String: String] = [:]
 
@@ -103,9 +98,6 @@ public final class AuditClient: Sendable {
         }
         if let endDate = endDate {
             query["endDate"] = ISO8601DateFormatter().string(from: endDate)
-        }
-        if let tenantId = tenantId {
-            query["tenantId"] = tenantId
         }
 
         return try await http.get("/v1/audit/stats", query: query, responseType: AuditStats.self)
@@ -178,13 +170,6 @@ public final class AuditClient: Sendable {
     /// Get recent activity for a user.
     public func getUserActivity(userId: String, limit: Int = 100) async throws -> [AuditEntry] {
         let filter = AuditFilter(userId: userId, limit: limit)
-        let page = try await list(filter: filter)
-        return page.items
-    }
-
-    /// Get recent activity for a tenant.
-    public func getTenantActivity(tenantId: String, limit: Int = 100) async throws -> [AuditEntry] {
-        let filter = AuditFilter(tenantId: tenantId, limit: limit)
         let page = try await list(filter: filter)
         return page.items
     }

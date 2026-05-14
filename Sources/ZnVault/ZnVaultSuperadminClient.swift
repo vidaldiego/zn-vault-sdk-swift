@@ -1,62 +1,34 @@
-// Path: zn-vault-sdk-swift/Sources/ZnVault/ZnVaultClient.swift
+// Path: zn-vault-sdk-swift/Sources/ZnVault/ZnVaultSuperadminClient.swift
 
 import Foundation
 
-/// Tenant-scoped client for the ZnVault API.
+/// Superadmin-scoped client for cross-tenant administrative operations.
 ///
-/// This is the entry point for tenant operations. The tenant is always
-/// derived from the authenticated principal (the API key or JWT). There is
-/// no client-supplied tenant on any request.
+/// Use this client only with a superadmin principal. For tenant operations
+/// (encrypt/decrypt, secrets, your own tenant's users/roles/policies), use
+/// ``ZnVaultClient``.
 ///
-/// For cross-tenant administrative operations (managing tenants, users,
-/// roles, policies across tenants), use ``ZnVaultSuperadminClient``.
+/// The split is intentional: a service that holds a tenant-scoped API key
+/// cannot compile against the superadmin surface, so it can't accidentally
+/// call cross-tenant operations even if it wanted to.
 ///
-/// Example usage:
+/// Example:
 /// ```swift
-/// let client = try ZnVaultClient.builder()
+/// let admin = try ZnVaultSuperadminClient.builder()
 ///     .baseURL("https://vault.example.com:8443")
-///     .apiKey("znv_xxxx")
+///     .apiKey("znv_superadmin_xxx")
 ///     .build()
 ///
-/// // Login with credentials
-/// let tokens = try await client.auth.login(username: "user", password: "pass")
-///
-/// // Create a secret
-/// let secret = try await client.secrets.create(
-///     alias: "api/prod/db-creds",
-///     type: .credential,
-///     data: ["username": "dbuser", "password": "secret123"]
-/// )
-///
-/// // Decrypt a secret
-/// let data = try await client.secrets.decrypt(id: secret.id)
+/// let tenant = try await admin.tenants.create(...)
 /// ```
-public final class ZnVaultClient: Sendable {
+public final class ZnVaultSuperadminClient: Sendable {
     /// HTTP client for API requests.
     public let http: ZnVaultHttpClient
 
-    /// Authentication operations.
-    public let auth: AuthClient
+    /// Tenant CRUD (superadmin only).
+    public let tenants: TenantClient
 
-    /// Secret management operations.
-    public let secrets: SecretClient
-
-    /// KMS operations.
-    public let kms: KmsClient
-
-    /// Certificate lifecycle management operations.
-    public let certificates: CertificateClient
-
-    /// User management operations (tenant-scoped).
-    public let users: UserClient
-
-    /// Role management operations.
-    public let roles: RoleClient
-
-    /// Policy management operations.
-    public let policies: PolicyClient
-
-    /// Audit log operations.
+    /// Audit log across all tenants.
     public let audit: AuditClient
 
     /// Health check operations.
@@ -65,13 +37,7 @@ public final class ZnVaultClient: Sendable {
     /// Create client with configuration.
     public init(config: ZnVaultConfig) {
         self.http = ZnVaultHttpClient(config: config)
-        self.auth = AuthClient(http: http)
-        self.secrets = SecretClient(http: http)
-        self.kms = KmsClient(http: http)
-        self.certificates = CertificateClient(http: http)
-        self.users = UserClient(http: http)
-        self.roles = RoleClient(http: http)
-        self.policies = PolicyClient(http: http)
+        self.tenants = TenantClient(http: http)
         self.audit = AuditClient(http: http)
         self.health = HealthClient(http: http)
     }
@@ -86,7 +52,7 @@ public final class ZnVaultClient: Sendable {
         return Builder()
     }
 
-    /// Builder for creating ZnVaultClient.
+    /// Builder for creating ZnVaultSuperadminClient.
     public final class Builder: @unchecked Sendable {
         private var baseURL: String = ""
         private var apiKey: String?
@@ -97,50 +63,43 @@ public final class ZnVaultClient: Sendable {
 
         public init() {}
 
-        /// Set base URL.
         @discardableResult
         public func baseURL(_ url: String) -> Builder {
             self.baseURL = url
             return self
         }
 
-        /// Set API key for authentication.
         @discardableResult
         public func apiKey(_ key: String) -> Builder {
             self.apiKey = key
             return self
         }
 
-        /// Set access token for authentication (JWT).
         @discardableResult
         public func accessToken(_ token: String) -> Builder {
             self.accessToken = token
             return self
         }
 
-        /// Set request timeout.
         @discardableResult
         public func timeout(_ timeout: TimeInterval) -> Builder {
             self.timeout = timeout
             return self
         }
 
-        /// Trust self-signed certificates (development only).
         @discardableResult
         public func trustSelfSigned(_ trust: Bool) -> Builder {
             self.trustSelfSigned = trust
             return self
         }
 
-        /// Disable TLS certificate validation entirely (testing only).
         @discardableResult
         public func insecureTLS(_ insecure: Bool) -> Builder {
             self.insecureTLS = insecure
             return self
         }
 
-        /// Build the client.
-        public func build() throws -> ZnVaultClient {
+        public func build() throws -> ZnVaultSuperadminClient {
             guard !baseURL.isEmpty else {
                 throw ZnVaultError.configurationError(message: "Base URL is required")
             }
@@ -152,7 +111,7 @@ public final class ZnVaultClient: Sendable {
                 trustSelfSigned: trustSelfSigned,
                 insecureTLS: insecureTLS
             )
-            return ZnVaultClient(config: config)
+            return ZnVaultSuperadminClient(config: config)
         }
     }
 }

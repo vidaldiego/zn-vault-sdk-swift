@@ -28,7 +28,8 @@ public struct AuditEntry: Codable, Sendable, Identifiable {
     }
 }
 
-/// Audit log filter.
+/// Audit log filter. The list is always scoped to the caller's tenant by
+/// the server; there is no client-supplied tenant filter.
 public struct AuditFilter: Sendable {
     public let clientCn: String?
     public let action: String?
@@ -37,7 +38,6 @@ public struct AuditFilter: Sendable {
     public let startDate: Date?
     public let endDate: Date?
     public let userId: String?
-    public let tenantId: String?
     public let limit: Int
     public let offset: Int
 
@@ -49,7 +49,6 @@ public struct AuditFilter: Sendable {
         startDate: Date? = nil,
         endDate: Date? = nil,
         userId: String? = nil,
-        tenantId: String? = nil,
         limit: Int = 100,
         offset: Int = 0
     ) {
@@ -60,7 +59,6 @@ public struct AuditFilter: Sendable {
         self.startDate = startDate
         self.endDate = endDate
         self.userId = userId
-        self.tenantId = tenantId
         self.limit = limit
         self.offset = offset
     }

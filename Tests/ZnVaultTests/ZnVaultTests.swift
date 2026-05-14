@@ -31,11 +31,22 @@ final class ZnVaultTests: XCTestCase {
         XCTAssertNotNil(client.secrets)
         XCTAssertNotNil(client.kms)
         XCTAssertNotNil(client.users)
-        XCTAssertNotNil(client.tenants)
+        // client.tenants no longer exists — moved to ZnVaultSuperadminClient
         XCTAssertNotNil(client.roles)
         XCTAssertNotNil(client.policies)
         XCTAssertNotNil(client.audit)
         XCTAssertNotNil(client.health)
+    }
+
+    func testSuperadminClientBuilder() throws {
+        let admin = try ZnVaultSuperadminClient.builder()
+            .baseURL("https://vault.example.com:8443")
+            .apiKey("test-key")
+            .build()
+
+        XCTAssertNotNil(admin.tenants)
+        XCTAssertNotNil(admin.audit)
+        XCTAssertNotNil(admin.health)
     }
 
     func testClientBuilderThrowsWithoutBaseURL() {
@@ -186,13 +197,11 @@ final class ZnVaultTests: XCTestCase {
 
     func testKeyFilter() {
         let filter = KeyFilter(
-            tenant: "test-tenant",
             state: .enabled,
             usage: .encryptDecrypt,
             limit: 50
         )
 
-        XCTAssertEqual(filter.tenant, "test-tenant")
         XCTAssertEqual(filter.state, KeyState.enabled)
         XCTAssertEqual(filter.usage, KeyUsage.encryptDecrypt)
         XCTAssertEqual(filter.limit, 50)

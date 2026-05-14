@@ -105,29 +105,28 @@ public struct MeResponse: Codable, Sendable {
     }
 }
 
-/// Request to create a user.
+/// Request to create a user. Tenant is derived from the authenticated
+/// principal by the server. For cross-tenant user creation use
+/// ``ZnVaultSuperadminClient``.
 public struct CreateUserRequest: Codable, Sendable {
     public let username: String
     public let password: String
     public let email: String?
     public let role: String?
-    public let tenantId: String?
 
     enum CodingKeys: String, CodingKey {
-        case username, password, email, role, tenantId
+        case username, password, email, role
     }
 
     public init(
         username: String,
         password: String,
         email: String? = nil,
-        tenantId: String? = nil,
         role: String? = nil
     ) {
         self.username = username
         self.password = password
         self.email = email
         self.role = role
-        self.tenantId = tenantId
     }
 }
