@@ -80,17 +80,60 @@ public struct AuditStats: Codable, Sendable {
 }
 
 /// Audit chain verification result.
+public struct AuditVerificationInterval: Codable, Sendable {
+    public let firstId: Int?
+    public let lastId: Int?
+}
 public struct AuditVerifyResult: Codable, Sendable {
-    public let valid: Bool
-    public let entriesVerified: Int
+    public private(set) var valid: Bool
+    public var entriesVerified: Int { authenticatedEntries ?? 0 }
+    public let status: String?
+    public let reason: String?
+    public let reasons: [String]?
+    public let errors: [String]?
+    public let checkedEntries: Int?
+    public let readEntries: Int?
+    public let authenticatedEntries: Int?
+    public let unverifiedEntries: Int?
+    public let unsignedDetailsEntries: Int?
+    public let scope: String?
+    public let interval: AuditVerificationInterval?
+    public let completed: Bool?
+    public let startedAt: String?
+    public let finishedAt: String?
+    public let consistency: String?
+    public let historicalCompleteness: String?
     public let brokenAt: Int?
     public let message: String?
-
+    public let lastVerified: String?
     enum CodingKeys: String, CodingKey {
-        case valid
-        case entriesVerified = "entries_verified"
-        case brokenAt = "broken_at"
-        case message
+        case valid, status, reason, reasons, errors, checkedEntries, readEntries, authenticatedEntries, unverifiedEntries, unsignedDetailsEntries, scope, interval, completed, startedAt, finishedAt, consistency, historicalCompleteness, brokenAt, message, lastVerified
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        reasons = try c.decodeIfPresent([String].self, forKey: .reasons)
+        errors = try c.decodeIfPresent([String].self, forKey: .errors)
+        checkedEntries = try c.decodeIfPresent(Int.self, forKey: .checkedEntries)
+        readEntries = try c.decodeIfPresent(Int.self, forKey: .readEntries)
+        authenticatedEntries = try c.decodeIfPresent(Int.self, forKey: .authenticatedEntries)
+        unverifiedEntries = try c.decodeIfPresent(Int.self, forKey: .unverifiedEntries)
+        unsignedDetailsEntries = try c.decodeIfPresent(Int.self, forKey: .unsignedDetailsEntries)
+        scope = try c.decodeIfPresent(String.self, forKey: .scope)
+        interval = try c.decodeIfPresent(AuditVerificationInterval.self, forKey: .interval)
+        completed = try c.decodeIfPresent(Bool.self, forKey: .completed)
+        startedAt = try c.decodeIfPresent(String.self, forKey: .startedAt)
+        finishedAt = try c.decodeIfPresent(String.self, forKey: .finishedAt)
+        consistency = try c.decodeIfPresent(String.self, forKey: .consistency)
+        historicalCompleteness = try c.decodeIfPresent(String.self, forKey: .historicalCompleteness)
+        brokenAt = try c.decodeIfPresent(Int.self, forKey: .brokenAt)
+        message = try c.decodeIfPresent(String.self, forKey: .message)
+        lastVerified = try c.decodeIfPresent(String.self, forKey: .lastVerified)
+        let reportedValid = try c.decodeIfPresent(Bool.self, forKey: .valid) ?? false
+        valid = reportedValid && status == "verified" && scope == "retained" && completed == true
+            && (readEntries ?? 0) > 0 && authenticatedEntries == readEntries
+            && unverifiedEntries == 0 && unsignedDetailsEntries == 0
     }
 }
 

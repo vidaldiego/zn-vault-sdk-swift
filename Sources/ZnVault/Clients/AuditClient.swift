@@ -107,7 +107,7 @@ public final class AuditClient: Sendable {
 
     /// Verify audit chain integrity.
     public func verify() async throws -> AuditVerifyResult {
-        return try await http.get("/v1/audit/verify", responseType: AuditVerifyResult.self)
+        return try await http.get("/v1/superadmin/audit/verify", responseType: AuditVerifyResult.self)
     }
 
     // MARK: - Export

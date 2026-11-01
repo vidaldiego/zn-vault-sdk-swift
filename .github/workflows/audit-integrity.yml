@@ -1,0 +1,10 @@
+name: Audit verification contract
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  audit-integrity:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --filter AuditVerificationContractTests
